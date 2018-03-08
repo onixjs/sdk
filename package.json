@@ -1,0 +1,82 @@
+{
+  "name": "@onixjs/sdk",
+  "version": "1.0.0-alpha.1",
+  "description": "RPC Client for OnixJS Applications.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "npm run lint:fix && npm run build:dist && npm run build:dist6 && npm run build:docs",
+    "build:dist": "tsc --target es2017 --outDir dist",
+    "build:dist6": "tsc --target es2015 --outDir dist6",
+    "build:watch": "tsc --watch",
+    "build:docs": "typedoc --out ./documentation ./src",
+    "clean": "rm -rf dist dist6",
+    "lint": "npm run prettier:check && npm run tslint",
+    "lint:fix": "npm run prettier:fix && npm run tslint:fix",
+    "prettier:cli": "prettier \"**/*.ts\" \"**/*.js\"",
+    "prettier:check": "npm run prettier:cli -- -l",
+    "prettier:fix": "npm run prettier:cli -- --write",
+    "tslint": "tslint -c tslint.full.json --project tsconfig.json --type-check",
+    "tslint:fix": "npm run lint -- --fix",
+    "prepublish": "npm run build",
+    "pretest": "npm run lint:fix && npm run clean && npm run build",
+    "test": "ava",
+    "posttest": "npm run lint",
+    "serve:docs": "npm run build && node ./dist/documentation"
+  },
+  "author": {
+    "name": "Jonathan Casarrubias",
+    "email": "jcasarrubias@mean.expert",
+    "url": "https://github.com/mean-expert-official"
+  },
+  "homepage": "https://github.com/onixjs/sdk#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onixjs/sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/onixjs/sdk/issues"
+  },
+  "files": [
+    "index.d.ts",
+    "dist",
+    "dist6",
+    "LICENSE.md"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "reflect-metadata": "^0.1.12",
+    "uuid": "^3.2.1",
+    "uws": "^9.14.0"
+  },
+  "devDependencies": {
+    "@types/mongodb": "^3.0.5",
+    "@types/mongoose": "^5.0.2",
+    "@types/node": "^9.4.6",
+    "@types/uws": "^0.13.1",
+    "ava": "^0.25.0",
+    "finalhandler": "^1.1.0",
+    "prettier": "^1.10.2",
+    "serve-static": "^1.13.1",
+    "tslint": "^5.9.1",
+    "typedoc": "^0.10.0",
+    "typescript": "^2.6.2"
+  },
+  "ava": {
+    "files": [
+      "test/**/*.acceptance.js"
+    ],
+    "source": [
+      "test/**/*.acceptance.js"
+    ],
+    "match": [],
+    "concurrency": 5,
+    "failFast": true,
+    "failWithoutAssertions": false,
+    "tap": true,
+    "color": true,
+    "verbose": true,
+    "compileEnhancements": false,
+    "require": [],
+    "babel": {}
+  }
+}
