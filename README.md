@@ -1,6 +1,6 @@
 OnixJS Software Development Kit
 ================
-![alt text](https://raw.githubusercontent.com/onixjs/core/master/onix-splash.svg?sanitize=true "OnixJS")
+![alt text](https://raw.githubusercontent.com/onixjs/core/master/onix-splash.png "OnixJS")
 A High-Performance NodeJS SOA Framework designed to address goals like flexibility, stability and connectivity.
 
 > **Disclaimer**: This framework is in active development and won't be ready for production until we reach release candidate.
@@ -54,6 +54,8 @@ $ npm install && npm run serve:docs
 ````
 
 Documents will be served on [http://127.0.0.1:3000](http://127.0.0.1:3000)
+
+Note: This documentation is not final dev oriented.
 
 ## Test
 

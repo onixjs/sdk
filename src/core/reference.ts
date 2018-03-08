@@ -37,7 +37,7 @@ export class MethodReference {
 
   async call(payload: any): Promise<any> {
     return new Promise((resolve, reject) => {
-      if (this.invalid()) {
+      if (this.invalid('rpc')) {
         reject(
           new Error(
             `ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`,
@@ -67,6 +67,7 @@ export class MethodReference {
             rpc: this.endpoint(),
             request: <IRequest>{
               metadata: {
+                stream: false,
                 caller: 'SDK',
                 token: 'dummytoken',
               },
@@ -78,11 +79,44 @@ export class MethodReference {
     });
   }
 
-  async subscribe(listener: () => void) {
-    //TODO
+  async stream(listener: (stream: any) => void) {
+    if (this.invalid('stream')) {
+      listener(
+        new Error(
+          `ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`,
+        ),
+      );
+    } else {
+      const operationId = uuid();
+      this.componentReference.moduleReference.appReference.WebSocket.send(
+        JSON.stringify(<ICall>{
+          uuid: operationId,
+          rpc: this.endpoint(),
+          request: <IRequest>{
+            metadata: {
+              stream: true,
+              caller: 'SDK',
+              token: 'dummytoken',
+            },
+            payload: undefined,
+          },
+        }),
+      );
+      return this.componentReference.moduleReference.appReference.addListener(
+        (data: string) => {
+          const operation: IAppOperation = JSON.parse(data);
+          if (
+            operation.uuid === operationId &&
+            operation.type === OperationType.ONIX_REMOTE_CALL_STREAM
+          ) {
+            listener(operation.message);
+          }
+        },
+      );
+    }
   }
 
-  private invalid(): boolean {
+  private invalid(type: string): boolean {
     return (
       !this.componentReference.moduleReference.appReference.config.modules[
         this.componentReference.moduleReference.name
@@ -93,9 +127,9 @@ export class MethodReference {
       !this.componentReference.moduleReference.appReference.config.modules[
         this.componentReference.moduleReference.name
       ][this.componentReference.name] ||
-      !this.componentReference.moduleReference.appReference.config.modules[
+      this.componentReference.moduleReference.appReference.config.modules[
         this.componentReference.moduleReference.name
-      ][this.componentReference.name][this.name]
+      ][this.componentReference.name][this.name] !== type
     );
   }
 
@@ -109,7 +143,7 @@ export class MethodReference {
 }
 
 export class AppReference {
-  private index: 0;
+  private index: number = 0;
   private listeners: {[key: number]: ((data: string) => void)} = {};
   // modules
   private modules: {[key: string]: ModuleReference} = {};

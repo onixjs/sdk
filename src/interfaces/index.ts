@@ -27,8 +27,9 @@ export enum OperationType {
   /*9*/ APP_DESTROY_RESPONSE,
   /*10*/ APP_GREET,
   /*11*/ APP_GREET_RESPONSE,
-  /*12*/ ONIX_REMOTE_CALL_PROCEDURE,
-  /*13*/ ONIX_REMOTE_CALL_PROCEDURE_RESPONSE,
+  /*12*/ ONIX_REMOTE_CALL_STREAM,
+  /*13*/ ONIX_REMOTE_CALL_PROCEDURE,
+  /*14*/ ONIX_REMOTE_CALL_PROCEDURE_RESPONSE,
 }
 // Required because of different http modules
 export enum RuntimeEnvironment {
@@ -58,7 +59,7 @@ export interface IAppRefConfig {
   modules: {
     [moduleName: string]: {
       [componentName: string]: {
-        [methodName: string]: boolean;
+        [methodName: string]: string;
       };
     };
   };
