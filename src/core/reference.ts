@@ -1,6 +1,5 @@
 import {
   IAppRefConfig,
-  IWS,
   ICall,
   IRequest,
   IAppOperation,
@@ -46,8 +45,7 @@ export class MethodReference {
       } else {
         const operationId = uuid();
         const listenerId: number = this.componentReference.moduleReference.appReference.addListener(
-          (data: string) => {
-            const operation: IAppOperation = JSON.parse(data);
+          (operation: IAppOperation) => {
             if (
               operation.uuid === operationId &&
               operation.type ===
@@ -61,7 +59,7 @@ export class MethodReference {
             // TODO ADD TIMEOUT RESPONSE HERE
           },
         );
-        this.componentReference.moduleReference.appReference.WebSocket.send(
+        this.componentReference.moduleReference.appReference.config.client.send(
           JSON.stringify(<ICall>{
             uuid: operationId,
             rpc: this.endpoint(),
@@ -88,7 +86,7 @@ export class MethodReference {
       );
     } else {
       const operationId = uuid();
-      this.componentReference.moduleReference.appReference.WebSocket.send(
+      this.componentReference.moduleReference.appReference.config.client.send(
         JSON.stringify(<ICall>{
           uuid: operationId,
           rpc: this.endpoint(),
@@ -103,8 +101,7 @@ export class MethodReference {
         }),
       );
       return this.componentReference.moduleReference.appReference.addListener(
-        (data: string) => {
-          const operation: IAppOperation = JSON.parse(data);
+        (operation: IAppOperation) => {
           if (
             operation.uuid === operationId &&
             operation.type === OperationType.ONIX_REMOTE_CALL_STREAM
@@ -144,23 +141,21 @@ export class MethodReference {
 
 export class AppReference {
   private index: number = 0;
-  private listeners: {[key: number]: ((data: string) => void)} = {};
+  private listeners: {[key: number]: ((operation: IAppOperation) => void)} = {};
   // modules
   private modules: {[key: string]: ModuleReference} = {};
-  // WebSocket Client Reference
-  public WebSocket: IWS;
   // Todo Client
   constructor(public readonly config: IAppRefConfig) {}
 
   async connect(): Promise<any> {
     return new Promise<any>((resolve, reject) => {
-      this.WebSocket = new this.config.client(
+      this.config.client.connect(
         `${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host}:${
           this.config.port
         }`,
       );
-      this.WebSocket.open(() => resolve());
-      this.WebSocket.on('message', (data: string) =>
+      this.config.client.open(() => resolve());
+      this.config.client.on('message', (data: string) =>
         Object.keys(this.listeners)
           .map(key => this.listeners[key])
           .forEach((listener: (data: string) => void) => listener(data)),
@@ -177,7 +172,7 @@ export class AppReference {
     }
   }
 
-  addListener(listener: (data: string) => void) {
+  addListener(listener: (operation: IAppOperation) => void) {
     this.index += 1;
     this.listeners[this.index] = listener;
     return this.index;

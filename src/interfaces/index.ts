@@ -36,16 +36,20 @@ export enum RuntimeEnvironment {
   /*0*/ BROWSER,
   /*1*/ NODE_JS,
 }
-
 export interface OnixClientConfig {
   host: string;
   port: number;
-  runtime: RuntimeEnvironment;
+  adapters: IAdapters;
+}
+export interface IAdapters {
+  http: new () => IHTTP;
+  websocket: new () => IWS;
 }
 export interface IHTTP {
   get(url: string): Promise<object>;
 }
 export interface IWS {
+  connect(url: string): void;
   on(event: string, callback: (data: MessageEvent | string) => void): void;
   send(something: string | object): void;
   open(callback: () => void): void;
@@ -55,7 +59,7 @@ export interface IAppRefConfig {
   name: string;
   host: string;
   port: number;
-  client: new (url: string) => IWS;
+  client: IWS;
   modules: {
     [moduleName: string]: {
       [componentName: string]: {

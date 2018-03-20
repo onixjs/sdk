@@ -25,10 +25,15 @@ All of this while providing with cool and modern features and mechanisms to buil
 
 ```js
 import { OnixClient, AppReference} from "@onixjs/sdk";
-// Create SDK Instance (Hint: Options defaults to localhost)
+import { Browser } from '@onixjs/sdk/dist/core/browser.adapters';
+// Create SDK Instance (Hint: Use NodeJS Adapters for NodeJS Clients)
 const SDK: OnixClient = new OnixClient({
     host: '127.0.0.1',
-    port: 80
+    port: 80,
+    adapters: {
+        http: Browser.HTTP,
+        websocket: Browser.WebSocket
+    }
 });
 // Init SDK
 await SDK.init();
@@ -64,3 +69,42 @@ $ git clone git@github.com:onixjs/core.git
 $ cd core
 $ npm install && npm run test
 ````
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+import { Component } from '@angular/core';
+import { OnixClient, ComponentReference, AppReference} from '@onixjs/sdk';
+import { Browser } from '@onixjs/sdk/dist/core/browser.adapters';
+import { Observable } from 'rxjs/Observable';
+
+@Component({
+  selector: 'app-root',
+  templateUrl: './app.component.html',
+  styleUrls: ['./app.component.css']
+})
+export class AppComponent {
+
+  private sdk: OnixClient = new OnixClient({
+    host: 'http://127.0.0.1',
+    port: 3000,
+    adapters: {
+      http: Browser.HTTP,
+      websocket: Browser.WebSocket
+    }
+  });

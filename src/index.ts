@@ -1,9 +1,7 @@
-import {OnixClientConfig, RuntimeEnvironment} from './interfaces';
-import {HTTP} from './core/http';
-import {AppReference} from './core/reference';
-import {WS} from './core/websocket';
+import {OnixClientConfig, IHTTP} from './interfaces';
+import {AppReference} from './core';
+export * from './core';
 export * from './interfaces';
-export * from './core/reference';
 /**
  * @class OnixClient
  * @author Jonathan Casarrubias <gh: mean-expert-official>
@@ -12,10 +10,7 @@ export * from './core/reference';
  * client applications.
  */
 export class OnixClient {
-  private _http: HTTP.HTTPBrowserClient | HTTP.HTTPNodeClient;
-  private _ws:
-    | (new (url: string) => WS.WSBrowserClient)
-    | (new (url: string) => WS.WSNodeClient);
+  private _http: IHTTP;
   private _schema: any = {}; // TODO Interface Schema
   private _references: {[key: string]: any} = {}; // Todo Reference Interface
   /**
@@ -25,25 +20,11 @@ export class OnixClient {
    * also define a default value for our config incase is not
    * provided.
    */
-  constructor(
-    private config: OnixClientConfig = {
-      host: 'http://localhost',
-      port: 3000,
-      runtime: RuntimeEnvironment.NODE_JS,
-    },
-  ) {
-    // Setup the right http client
-    switch (this.config.runtime) {
-      case RuntimeEnvironment.NODE_JS:
-        this._ws = WS.WSNodeClient;
-        this._http = new HTTP.HTTPNodeClient();
-        break;
-      case RuntimeEnvironment.BROWSER:
-        this._ws = WS.WSBrowserClient;
-        this._http = new HTTP.HTTPBrowserClient();
-        break;
-      default:
-        throw new Error('Unable to get a suitable HTTP client');
+  constructor(private config: OnixClientConfig) {
+    if (this.config.adapters.websocket && this.config.adapters.websocket) {
+      this._http = new this.config.adapters.http();
+    } else {
+      console.log('ONIXJS SDK: Unable to find suitable adapters.');
     }
   }
   /**
@@ -71,7 +52,10 @@ export class OnixClient {
       }
       if (!this._references[name]) {
         this._references[name] = new AppReference(
-          Object.assign({name, client: this._ws}, this._schema[name]),
+          Object.assign(
+            {name, client: new this.config.adapters.websocket()},
+            this._schema[name],
+          ),
         );
         await this._references[name].connect();
       }
