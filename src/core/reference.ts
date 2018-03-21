@@ -6,6 +6,7 @@ import {
   OperationType,
 } from '../interfaces';
 import * as uuid from 'uuid';
+import {Utils} from '../utils';
 
 export class ModuleReference {
   // components
@@ -101,8 +102,12 @@ export class MethodReference {
         }),
       );
       return this.componentReference.moduleReference.appReference.addListener(
-        (operation: IAppOperation) => {
+        (operation: IAppOperation | string) => {
+          operation = Utils.IsJsonString(operation)
+            ? JSON.parse(<string>operation)
+            : operation;
           if (
+            typeof operation !== 'string' &&
             operation.uuid === operationId &&
             operation.type === OperationType.ONIX_REMOTE_CALL_STREAM
           ) {
