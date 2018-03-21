@@ -77,7 +77,7 @@ export class MethodReference {
     });
   }
 
-  async stream(listener: (stream: any) => void) {
+  stream(listener: (stream: any) => void) {
     if (this.invalid('stream')) {
       listener(
         new Error(
