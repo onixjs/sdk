@@ -9,7 +9,7 @@ export namespace Utils {
   }
 
   export function uuid() {
-    return `${new Date().getMilliseconds}:${Utils.getRandomInt(
+    return `${new Date().getMilliseconds()}:${Utils.getRandomInt(
       9999999999999,
     )}:${Utils.getRandomInt(9999999999999)}`;
   }
