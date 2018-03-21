@@ -5,7 +5,6 @@ import {
   IAppOperation,
   OperationType,
 } from '../interfaces';
-import * as uuid from 'uuid';
 import {Utils} from '../utils';
 
 export class ModuleReference {
@@ -44,10 +43,14 @@ export class MethodReference {
           ),
         );
       } else {
-        const operationId = uuid();
+        const operationId = Utils.uuid();
         const listenerId: number = this.componentReference.moduleReference.appReference.addListener(
-          (operation: IAppOperation) => {
+          (operation: IAppOperation | string) => {
+            operation = Utils.IsJsonString(operation)
+              ? JSON.parse(<string>operation)
+              : operation;
             if (
+              typeof operation !== 'string' &&
               operation.uuid === operationId &&
               operation.type ===
                 OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE
@@ -86,7 +89,7 @@ export class MethodReference {
         ),
       );
     } else {
-      const operationId = uuid();
+      const operationId = Utils.uuid();
       this.componentReference.moduleReference.appReference.config.client.send(
         JSON.stringify(<ICall>{
           uuid: operationId,
