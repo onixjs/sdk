@@ -1,4 +1,4 @@
-OnixJS - FrameWork [![Beerpay](https://beerpay.io/onixjs/core/badge.svg?style=beer)](https://beerpay.io/onixjs/core) [![Beerpay](https://beerpay.io/onixjs/core/make-wish.svg?style=flat)](https://beerpay.io/onixjs/core?focus=wish) [![Travis](https://img.shields.io/travis/onixjs/core.svg)](https://travis-ci.org/onixjs/core) [![npm (scoped)](https://img.shields.io/npm/v/@onixjs/core.svg)](npmjs.com/package/@onixjs/core) [![Coveralls github](https://img.shields.io/coveralls/github/onixjs/core/development.svg)](https://coveralls.io/github/onixjs/core)
+OnixJS - FrameWork [![Beerpay](https://beerpay.io/onixjs/core/badge.svg?style=beer)](https://beerpay.io/onixjs/core) [![Beerpay](https://beerpay.io/onixjs/core/make-wish.svg?style=flat)](https://beerpay.io/onixjs/core?focus=wish) [![Coverage Status](https://coveralls.io/repos/github/onixjs/core/badge.svg?branch=master)](https://coveralls.io/github/onixjs/core?branch=master) [![Travis](https://img.shields.io/travis/onixjs/core.svg)](https://travis-ci.org/onixjs/core) [![npm (scoped)](https://img.shields.io/npm/v/@onixjs/core.svg)](http://npmjs.com/package/@onixjs/core)
 ================
 ![alt text](https://raw.githubusercontent.com/onixjs/core/master/misc/onix-splash.png "OnixJS")
 
@@ -25,18 +25,18 @@ The **OnixJS FrameWork** is an ***Enterprise Grade*** **Node.JS** platform that 
 - **FrameWork Agnostic SDK** *(For ES6+/TypeScript Clients)*
 - Dependency Injection (**DI**)
 - **Service Oriented Architecture or Monolithic Architecture**.
-- Representional State Transfer API (**REST API**)
+- Representational State Transfer API (**REST API**)
 - Remote Procedure Call and Streams API (**RPC/RPCS APIs**)
 - Module and Component Level LifeCycles (**Hooks**)
-- Back-end compatible with any **ORM** *(LoopBack's Datasource Juggler, Mongoose, Sequalize, TypeORM, Etc)*
+- Back-end compatible with any **ORM** *(LoopBack's Datasource Juggler, Mongoose, Sequelize, TypeORM, Etc)*
 
 ## Documentation
 The following link will take you to the [OnixJS Documentation](https://github.com/onixjs/core/wiki)
 
-`DISCLAIMER: The wiki is a temporal documentation created to start guiding developers into the OnixJS World. An Official Web and Mode Complete Documentation Sites are currently being developed.`
+`DISCLAIMER: The wiki is a temporal documentation created to start guiding developers into the OnixJS World. An Official Web and More Complete Documentation Sites are currently being developed.`
 
-## Phylosophy
-The OnixJS phylosophy is to empower developers to decide which dependencies they want to install and maintain in their projects.
+## Philosophy
+The OnixJS philosophy is to empower developers to decide which dependencies they want to install and maintain in their projects.
 
 We strongly believe that staging or deploying your project, now or in a year... MUST NOT be affected by the framework or any of its dependencies, and that is the reason of why we decided to use practically zero dependencies.
 
@@ -63,8 +63,8 @@ $ npm install && npm run test
 ## Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
-| [<img src="https://avatars0.githubusercontent.com/u/1533239?v=3" width="100px;"/><br /><sub>Jonathan Casarrubias</sub>](http://mean.expert/)<br />[💻](https://github.com/onixjs/core/commits?author=jonathan-casarrubias) |
-| :---: |
+| [<img src="https://avatars0.githubusercontent.com/u/1533239?v=3" width="100px;"/><br /><sub>Jonathan Casarrubias</sub>](http://mean.expert/)<br />[💻](https://github.com/onixjs/core/commits?author=jonathan-casarrubias) | [<img src="https://avatars0.githubusercontent.com/u/17414885?s=460&v=4" width="100px;"/><br /><sub>Miguel Serrano</sub>](https://github.com/Serranom4)<br />[💻](https://github.com/onixjs/sdk/commits?author=Serranom4)|
+| :---: | :---: |
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
 This project follows the [all-contributors](https://github.com/kentcdodds/all-contributors) specification. Contributions of any kind welcome!

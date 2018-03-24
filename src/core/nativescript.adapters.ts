@@ -1,7 +1,7 @@
-import * as http from 'http';
-import { IWS, IHTTP } from '../interfaces';
+import {IWS, IHTTP} from '../interfaces';
 require('nativescript-websockets');
 const WS = WebSocket;
+const http = require('http');
 /**
  * @namespace Nativescript
  * @author Miguel Serrano
@@ -23,7 +23,7 @@ export namespace Nativescript {
     on(name: string, callback) {
       switch (name) {
         case 'message':
-          this.connection.addEventListener(name, (evt) => {
+          this.connection.addEventListener(name, evt => {
             callback(evt.data);
           });
           break;
@@ -31,7 +31,7 @@ export namespace Nativescript {
           throw new Error(
             `ONIX Client: WebSocket event ${name} is not implemented.`,
           );
-      } 
+      }
     }
     send(something: string) {
       this.connection.send(something);
@@ -49,10 +49,13 @@ export namespace Nativescript {
   export class HTTP implements IHTTP {
     async get(url: string): Promise<object> {
       return new Promise<object>((resolve, reject) => {
-        http.request({method: 'GET', url}).then( res => {
-          resolve(res.content.toJSON());
-          // Rehect on error
-        }, e => reject(e));
+        http.request({method: 'GET', url}).then(
+          res => {
+            resolve(res.content.toJSON());
+            // Rehect on error
+          },
+          e => reject(e),
+        );
       });
     }
   }
