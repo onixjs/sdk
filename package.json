@@ -1,12 +1,14 @@
 {
   "name": "@onixjs/sdk",
-  "version": "1.0.0-alpha.4.2",
+  "version": "1.0.0-alpha.4.3",
   "description": "RPC Client for OnixJS Applications.",
   "main": "dist/index.js",
   "scripts": {
-    "build": "npm run lint:fix && npm run build:dist && npm run build:dist6 && npm run build:docs",
-    "build:dist": "tsc --target es2017 --outDir dist",
-    "build:dist6": "tsc --target es2015 --outDir dist6",
+    "build": "npm run lint:fix && npm run build:module:dist && npm run build:module:dist6 && npm run build:browser:dist && npm run build:browser:dist6 && npm run build:docs",
+    "build:module:dist": "tsc --target es2017 --outDir dist",
+    "build:module:dist6": "tsc --target es2015 --outDir dist6",
+    "build:browser:dist": "tsc --target es2017 --p tsconfig.vanilla.json --outFile vanilla/browser.dist.js",
+    "build:browser:dist6": "tsc --target es2015 --p tsconfig.vanilla.json --outFile vanilla/browser.dist6.js",
     "build:watch": "tsc --watch",
     "build:docs": "typedoc --out ./documentation ./src",
     "clean": "rm -rf dist dist6",

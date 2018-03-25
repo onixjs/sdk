@@ -7,7 +7,7 @@
       "noUnusedLocals": true,
   
       "lib": ["es2017", "dom"],
-      "module": "commonjs",
+      "module": "none",
       "moduleResolution": "node",
       "target": "es2017",
       "outDir": "dist",
