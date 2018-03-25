@@ -51,6 +51,11 @@ export class OnixClient {
         );
       }
       if (!this._references[name]) {
+        // Use passed host config if any
+        this._schema[name].host = this.config.host.replace(
+          /http[s]{0,1}:\/\//,
+          '',
+        );
         this._references[name] = new AppReference(
           Object.assign(
             {name, client: new this.config.adapters.websocket()},
