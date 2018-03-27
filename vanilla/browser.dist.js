@@ -477,6 +477,33 @@ define("core/node.adapters", ["require", "exports", "uws", "http", "https"], fun
                     }
                 });
             }
+            async post(config, request) {
+                return new Promise((resolve, reject) => {
+                    // Set request options (Can be overrided from caller)
+                    const options = Object.assign({
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                    }, config);
+                    // Create request object
+                    const req = http.request(options, function (res) {
+                        res.setEncoding('utf8');
+                        let body = '';
+                        // Concatenate Response
+                        res.on('data', data => (body += data));
+                        // Resolve Call
+                        res.on('end', () => {
+                            resolve(JSON.parse(body));
+                        });
+                        // Rehect on error
+                    });
+                    req.on('error', e => reject(e));
+                    // write data to request body
+                    req.write(JSON.stringify(request));
+                    req.end();
+                });
+            }
         }
         NodeJS.HTTP = HTTP;
     })(NodeJS = exports.NodeJS || (exports.NodeJS = {}));
