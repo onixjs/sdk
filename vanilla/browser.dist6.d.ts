@@ -270,6 +270,7 @@ declare module "core/node.adapters" {
          */
         class HTTP implements IHTTP {
             get(url: string): Promise<object>;
+            post(config: any, request: any): Promise<object>;
         }
     }
 }

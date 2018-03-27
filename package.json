@@ -1,6 +1,6 @@
 {
   "name": "@onixjs/sdk",
-  "version": "1.0.0-alpha.4.3",
+  "version": "1.0.0-alpha.4.4",
   "description": "RPC Client for OnixJS Applications.",
   "main": "dist/index.js",
   "scripts": {
