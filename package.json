@@ -1,6 +1,6 @@
 {
   "name": "@onixjs/sdk",
-  "version": "1.0.0-alpha.4.4",
+  "version": "1.0.0-alpha.5",
   "description": "RPC Client for OnixJS Applications.",
   "main": "dist/index.js",
   "scripts": {
@@ -52,14 +52,15 @@
     "@types/mongodb": "^3.0.5",
     "@types/mongoose": "^5.0.2",
     "@types/node": "^9.4.6",
-    "@types/uws": "^0.13.1",
+    "@types/uws": "^0.13.2",
     "ava": "^0.25.0",
     "finalhandler": "^1.1.0",
     "prettier": "^1.10.2",
     "serve-static": "^1.13.1",
     "tslint": "^5.9.1",
     "typedoc": "^0.10.0",
-    "typescript": "^2.6.2"
+    "typescript": "^2.6.2",
+    "uws": "^9.148.0"
   },
   "ava": {
     "files": [

@@ -1,5 +1,12 @@
-import {OnixClientConfig, IHTTP} from './interfaces';
+import {
+  OnixClientConfig,
+  IWS,
+  IAppOperation,
+  IHTTP,
+  IAppRefConfig,
+} from './interfaces';
 import {AppReference} from './core';
+import {Utils} from './utils';
 export * from './core';
 export * from './interfaces';
 /**
@@ -10,9 +17,12 @@ export * from './interfaces';
  * client applications.
  */
 export class OnixClient {
+  private index: number = 0;
+  private _ws: IWS;
   private _http: IHTTP;
   private _schema: any = {}; // TODO Interface Schema
   private _references: {[key: string]: any} = {}; // Todo Reference Interface
+  private listeners: {[key: number]: ((operation: IAppOperation) => void)} = {};
   /**
    * @constructor
    * @param config
@@ -21,8 +31,9 @@ export class OnixClient {
    * provided.
    */
   constructor(private config: OnixClientConfig) {
-    if (this.config.adapters.websocket && this.config.adapters.websocket) {
+    if (this.config.adapters.http && this.config.adapters.websocket) {
       this._http = new this.config.adapters.http();
+      this._ws = new this.config.adapters.websocket();
     } else {
       console.log('ONIXJS SDK: Unable to find suitable adapters.');
     }
@@ -33,38 +44,85 @@ export class OnixClient {
    * in order to correctly configure each Application Reference.
    */
   public async init(): Promise<boolean> {
-    return new Promise<boolean>(async (resolve, reject) => {
+    return new Promise<any>(async (resolve, reject) => {
+      // Get OnixJS Schema
       this._schema = await this._http.get(
-        `${this.config.host}:${this.config.port}`,
+        `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
       );
-      resolve();
+      console.log('SCHEMA ', this._schema);
+      // URL
+      const url: string = `${
+        this.config.port === 443 ? 'wss' : 'ws'
+      }://${this.config.host.replace(/http[s]{0,1}:\/\//, '')}:${
+        this.config.port
+      }`;
+      // Connect WebSocket
+      this._ws.connect(url);
+      // Register Single WS Listener
+      this._ws.on('message', (data: string) => {
+        Object.keys(this.listeners)
+          .map(key => this.listeners[key])
+          .forEach((listener: (data: IAppOperation) => void) =>
+            listener(
+              Utils.IsJsonString(data) ? JSON.parse(<string>data) : data,
+            ),
+          );
+      });
+      // When connection is open then resolve
+      this._ws.open(() => resolve());
     });
   }
-
-  public async AppReference(name: string): Promise<AppReference | Error> {
-    return new Promise<AppReference | Error>(async (resolve, reject) => {
-      if (!this._schema[name]) {
-        reject(
-          new Error(
-            `ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`,
-          ),
-        );
-      }
-      if (!this._references[name]) {
-        // Use passed host config if any
-        this._schema[name].host = this.config.host.replace(
-          /http[s]{0,1}:\/\//,
-          '',
-        );
-        this._references[name] = new AppReference(
-          Object.assign(
-            {name, client: new this.config.adapters.websocket()},
-            this._schema[name],
-          ),
-        );
-        await this._references[name].connect();
-      }
-      resolve(this._references[name]);
-    });
+  /**
+   * @class AppReference
+   * @param name
+   * @description This method will construct an application reference.
+   * Only if the provided schema defines it does exist.
+   */
+  public AppReference(name: string): AppReference | Error {
+    // Verify that the application actually exists on server
+    if (!this._schema[name]) {
+      return new Error(
+        `ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`,
+      );
+    }
+    // If the reference still doesn't exist, then create one
+    if (!this._references[name]) {
+      // Use passed host config if any
+      this._references[name] = new AppReference(<IAppRefConfig>Object.assign(
+        {
+          name,
+          client: this._ws,
+          addListener: (listener: (operation: IAppOperation) => void): number =>
+            this.addListener(listener),
+          removeListener: (id: number): boolean => this.removeListener(id),
+        },
+        this._schema[name],
+      ));
+    }
+    // Otherwise return a singleton instance of the reference
+    return this._references[name];
+  }
+  /**
+   * @method addListener
+   * @param listener
+   * @description This method will register application operation listeners
+   */
+  addListener(listener: (operation: IAppOperation) => void): number {
+    this.index += 1;
+    this.listeners[this.index] = listener;
+    return this.index;
+  }
+  /**
+   * @method removeListener
+   * @param listener
+   * @description This method will unload application operation listeners
+   */
+  removeListener(id: number): boolean {
+    if (this.listeners[id]) {
+      delete this.listeners[id];
+      return true;
+    } else {
+      return false;
+    }
   }
 }

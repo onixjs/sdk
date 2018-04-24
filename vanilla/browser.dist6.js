@@ -77,41 +77,30 @@ define("utils/index", ["require", "exports"], function (require, exports) {
         Utils.getRandomInt = getRandomInt;
     })(Utils = exports.Utils || (exports.Utils = {}));
 });
-define("core/reference", ["require", "exports", "interfaces/index", "utils/index"], function (require, exports, interfaces_1, utils_1) {
+define("core/method.reference", ["require", "exports", "interfaces/index", "utils/index"], function (require, exports, interfaces_1, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    class ModuleReference {
-        constructor(name, appReference) {
-            this.name = name;
-            this.appReference = appReference;
-            // components
-            this.components = {};
-        }
-        Component(name) {
-            if (!this.components[name])
-                this.components[name] = new ComponentReference(name, this);
-            return this.components[name];
-        }
-    }
-    exports.ModuleReference = ModuleReference;
-    class ComponentReference {
-        constructor(name, moduleReference) {
-            this.name = name;
-            this.moduleReference = moduleReference;
-            this.methods = {};
-        }
-        Method(name) {
-            if (!this.methods[name])
-                this.methods[name] = new MethodReference(name, this);
-            return this.methods[name];
-        }
-    }
-    exports.ComponentReference = ComponentReference;
+    /**
+     * @class ModuleReference
+     * @author Jonathan Casarrubias
+     * @license MIT
+     */
     class MethodReference {
+        /**
+         * @constructor
+         * @param name
+         * @param componentReference
+         */
         constructor(name, componentReference) {
             this.name = name;
             this.componentReference = componentReference;
         }
+        /**
+         * @method call
+         * @param payload
+         * @description This method will call for RPC endpoints. It will send an application operation
+         * to the OnixJS Service HOST.
+         */
         call(payload) {
             return __awaiter(this, void 0, void 0, function* () {
                 return new Promise((resolve, reject) => {
@@ -119,62 +108,70 @@ define("core/reference", ["require", "exports", "interfaces/index", "utils/index
                         reject(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
                     }
                     else {
-                        const operationId = utils_1.Utils.uuid();
-                        const listenerId = this.componentReference.moduleReference.appReference.addListener((operation) => {
-                            operation = utils_1.Utils.IsJsonString(operation)
-                                ? JSON.parse(operation)
-                                : operation;
-                            if (typeof operation !== 'string' &&
-                                operation.uuid === operationId &&
-                                operation.type ===
+                        const operation = {
+                            uuid: utils_1.Utils.uuid(),
+                            type: interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                            message: {
+                                rpc: this.endpoint(),
+                                request: {
+                                    metadata: {
+                                        stream: false,
+                                        caller: 'SDK',
+                                        token: 'dummytoken',
+                                    },
+                                    payload,
+                                },
+                            },
+                        };
+                        const listenerId = this.componentReference.moduleReference.appReference.config.addListener((response) => {
+                            if (response.uuid === operation.uuid &&
+                                response.type ===
                                     interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE) {
-                                this.componentReference.moduleReference.appReference.removeListener(listenerId);
-                                resolve(operation.message);
+                                resolve(response.message.request.payload);
+                                this.componentReference.moduleReference.appReference.config.removeListener(listenerId);
                             }
                             // TODO ADD TIMEOUT RESPONSE HERE
                         });
-                        this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify({
-                            uuid: operationId,
-                            rpc: this.endpoint(),
-                            request: {
-                                metadata: {
-                                    stream: false,
-                                    caller: 'SDK',
-                                    token: 'dummytoken',
-                                },
-                                payload,
-                            },
-                        }));
+                        // Send Operation to Server
+                        this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
                     }
                 });
             });
         }
-        stream(listener) {
+        /**
+         * @method stream
+         * @param listener
+         * @param payload
+         * @description This method will register a stream, which will be populated as the server keeps
+         * sending chunks of information.
+         */
+        stream(listener, payload) {
             if (this.invalid('stream')) {
                 listener(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
             }
             else {
-                const operationId = utils_1.Utils.uuid();
-                this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify({
-                    uuid: operationId,
-                    rpc: this.endpoint(),
-                    request: {
-                        metadata: {
-                            stream: true,
-                            caller: 'SDK',
-                            token: 'dummytoken',
+                const operation = {
+                    uuid: utils_1.Utils.uuid(),
+                    type: interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                    message: {
+                        rpc: this.endpoint(),
+                        request: {
+                            metadata: {
+                                stream: true,
+                                caller: 'SDK',
+                                token: 'dummytoken',
+                            },
+                            payload,
                         },
-                        payload: undefined,
                     },
-                }));
-                return this.componentReference.moduleReference.appReference.addListener((operation) => {
-                    operation = utils_1.Utils.IsJsonString(operation)
-                        ? JSON.parse(operation)
-                        : operation;
-                    if (typeof operation !== 'string' &&
-                        operation.uuid === operationId &&
-                        operation.type === interfaces_1.OperationType.ONIX_REMOTE_CALL_STREAM) {
-                        listener(operation.message);
+                };
+                // Register Stream
+                this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
+                // Chunks of information will be received in a future
+                return this.componentReference.moduleReference.appReference.config.addListener((response) => {
+                    if (response.uuid === operation.uuid &&
+                        response.type === interfaces_1.OperationType.ONIX_REMOTE_CALL_STREAM) {
+                        listener(response.message.request.payload);
                     }
                 });
             }
@@ -190,57 +187,83 @@ define("core/reference", ["require", "exports", "interfaces/index", "utils/index
         }
     }
     exports.MethodReference = MethodReference;
+});
+define("core/component.reference", ["require", "exports", "core/method.reference"], function (require, exports, method_reference_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * @class ModuleReference
+     * @author Jonathan Casarrubias
+     * @license MIT
+     */
+    class ComponentReference {
+        constructor(name, moduleReference) {
+            this.name = name;
+            this.moduleReference = moduleReference;
+            this.methods = {};
+        }
+        Method(name) {
+            if (!this.methods[name])
+                this.methods[name] = new method_reference_1.MethodReference(name, this);
+            return this.methods[name];
+        }
+    }
+    exports.ComponentReference = ComponentReference;
+});
+define("core/module.reference", ["require", "exports", "core/component.reference"], function (require, exports, component_reference_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * @class ModuleReference
+     * @author Jonathan Casarrubias
+     * @license MIT
+     */
+    class ModuleReference {
+        constructor(name, appReference) {
+            this.name = name;
+            this.appReference = appReference;
+            // components
+            this.components = {};
+        }
+        Component(name) {
+            if (!this.components[name])
+                this.components[name] = new component_reference_1.ComponentReference(name, this);
+            return this.components[name];
+        }
+    }
+    exports.ModuleReference = ModuleReference;
+});
+define("core/app.reference", ["require", "exports", "core/module.reference"], function (require, exports, module_reference_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
     class AppReference {
         // Todo Client
         constructor(config) {
             this.config = config;
-            this.index = 0;
-            this.listeners = {};
             // modules
             this.modules = {};
         }
-        connect() {
-            return __awaiter(this, void 0, void 0, function* () {
-                return new Promise((resolve, reject) => {
-                    this.config.client.connect(`${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host}:${this.config.port}`);
-                    this.config.client.open(() => resolve());
-                    this.config.client.on('message', (data) => Object.keys(this.listeners)
-                        .map(key => this.listeners[key])
-                        .forEach((listener) => listener(data)));
-                });
-            });
-        }
-        removeListener(id) {
-            if (this.listeners[id]) {
-                delete this.listeners[id];
-                return true;
-            }
-            else {
-                return false;
-            }
-        }
-        addListener(listener) {
-            this.index += 1;
-            this.listeners[this.index] = listener;
-            return this.index;
-        }
+        // Module
         Module(name) {
             if (!this.modules[name])
-                this.modules[name] = new ModuleReference(name, this);
+                this.modules[name] = new module_reference_1.ModuleReference(name, this);
             return this.modules[name];
         }
     }
     exports.AppReference = AppReference;
 });
-define("core/index", ["require", "exports", "core/reference"], function (require, exports, reference_1) {
+define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
     }
     Object.defineProperty(exports, "__esModule", { value: true });
-    __export(reference_1);
+    __export(app_reference_1);
+    __export(module_reference_2);
+    __export(component_reference_2);
+    __export(method_reference_2);
 });
-define("index", ["require", "exports", "core/index", "core/index", "interfaces/index"], function (require, exports, core_1, core_2, interfaces_2) {
+define("index", ["require", "exports", "core/index", "utils/index", "core/index", "interfaces/index"], function (require, exports, core_1, utils_2, core_2, interfaces_2) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -265,10 +288,13 @@ define("index", ["require", "exports", "core/index", "core/index", "interfaces/i
          */
         constructor(config) {
             this.config = config;
+            this.index = 0;
             this._schema = {}; // TODO Interface Schema
             this._references = {}; // Todo Reference Interface
-            if (this.config.adapters.websocket && this.config.adapters.websocket) {
+            this.listeners = {};
+            if (this.config.adapters.http && this.config.adapters.websocket) {
                 this._http = new this.config.adapters.http();
+                this._ws = new this.config.adapters.websocket();
             }
             else {
                 console.log('ONIXJS SDK: Unable to find suitable adapters.');
@@ -282,31 +308,76 @@ define("index", ["require", "exports", "core/index", "core/index", "interfaces/i
         init() {
             return __awaiter(this, void 0, void 0, function* () {
                 return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                    this._schema = yield this._http.get(`${this.config.host}:${this.config.port}`);
-                    resolve();
+                    // Get OnixJS Schema
+                    this._schema = yield this._http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
+                    console.log('SCHEMA ', this._schema);
+                    // URL
+                    const url = `${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host.replace(/http[s]{0,1}:\/\//, '')}:${this.config.port}`;
+                    // Connect WebSocket
+                    this._ws.connect(url);
+                    // Register Single WS Listener
+                    this._ws.on('message', (data) => {
+                        Object.keys(this.listeners)
+                            .map(key => this.listeners[key])
+                            .forEach((listener) => listener(utils_2.Utils.IsJsonString(data) ? JSON.parse(data) : data));
+                    });
+                    // When connection is open then resolve
+                    this._ws.open(() => resolve());
                 }));
             });
         }
+        /**
+         * @class AppReference
+         * @param name
+         * @description This method will construct an application reference.
+         * Only if the provided schema defines it does exist.
+         */
         AppReference(name) {
-            return __awaiter(this, void 0, void 0, function* () {
-                return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
-                    if (!this._schema[name]) {
-                        reject(new Error(`ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`));
-                    }
-                    if (!this._references[name]) {
-                        // Use passed host config if any
-                        this._schema[name].host = this.config.host.replace(/http[s]{0,1}:\/\//, '');
-                        this._references[name] = new core_1.AppReference(Object.assign({ name, client: new this.config.adapters.websocket() }, this._schema[name]));
-                        yield this._references[name].connect();
-                    }
-                    resolve(this._references[name]);
-                }));
-            });
+            // Verify that the application actually exists on server
+            if (!this._schema[name]) {
+                return new Error(`ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`);
+            }
+            // If the reference still doesn't exist, then create one
+            if (!this._references[name]) {
+                // Use passed host config if any
+                this._references[name] = new core_1.AppReference(Object.assign({
+                    name,
+                    client: this._ws,
+                    addListener: (listener) => this.addListener(listener),
+                    removeListener: (id) => this.removeListener(id),
+                }, this._schema[name]));
+            }
+            // Otherwise return a singleton instance of the reference
+            return this._references[name];
+        }
+        /**
+         * @method addListener
+         * @param listener
+         * @description This method will register application operation listeners
+         */
+        addListener(listener) {
+            this.index += 1;
+            this.listeners[this.index] = listener;
+            return this.index;
+        }
+        /**
+         * @method removeListener
+         * @param listener
+         * @description This method will unload application operation listeners
+         */
+        removeListener(id) {
+            if (this.listeners[id]) {
+                delete this.listeners[id];
+                return true;
+            }
+            else {
+                return false;
+            }
         }
     }
     exports.OnixClient = OnixClient;
 });
-define("core/browser.adapters", ["require", "exports", "utils/index"], function (require, exports, utils_2) {
+define("adapters/browser.adapters", ["require", "exports", "utils/index"], function (require, exports, utils_3) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Workaround to avoid naming issues
@@ -333,7 +404,7 @@ define("core/browser.adapters", ["require", "exports", "utils/index"], function 
                 switch (name) {
                     case 'message':
                         this.connection.onmessage = event => {
-                            callback(utils_2.Utils.IsJsonString(event.data)
+                            callback(utils_3.Utils.IsJsonString(event.data)
                                 ? JSON.parse(event.data)
                                 : event.data);
                         };
@@ -375,7 +446,7 @@ define("core/browser.adapters", ["require", "exports", "utils/index"], function 
         Browser.HTTP = HTTP;
     })(Browser = exports.Browser || (exports.Browser = {}));
 });
-define("core/nativescript.adapters", ["require", "exports"], function (require, exports) {
+define("adapters/nativescript.adapters", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     require('nativescript-websockets');
@@ -439,7 +510,7 @@ define("core/nativescript.adapters", ["require", "exports"], function (require, 
         Nativescript.HTTP = HTTP;
     })(Nativescript = exports.Nativescript || (exports.Nativescript = {}));
 });
-define("core/node.adapters", ["require", "exports", "uws", "http", "https"], function (require, exports, UWS, http, https) {
+define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index"], function (require, exports, UWS, http, https, utils_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -487,7 +558,7 @@ define("core/node.adapters", ["require", "exports", "uws", "http", "https"], fun
                             // Concatenate Response
                             res.on('data', data => (body += data));
                             // Resolve Call
-                            res.on('end', () => resolve(JSON.parse(body)));
+                            res.on('end', () => resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body));
                             // Rehect on error
                         };
                         if (url.match(/https:\/\//)) {
@@ -517,7 +588,7 @@ define("core/node.adapters", ["require", "exports", "uws", "http", "https"], fun
                             res.on('data', data => (body += data));
                             // Resolve Call
                             res.on('end', () => {
-                                resolve(JSON.parse(body));
+                                resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body);
                             });
                             // Rehect on error
                         });

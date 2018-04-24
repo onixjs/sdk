@@ -10,7 +10,28 @@ declare module "interfaces/index" {
     export interface IAppOperation {
         uuid: string;
         type: OperationType;
-        message: any;
+        message: OnixMessage;
+    }
+    /**
+     * @interface OnixMessage
+     * @author Jonathan Casarrubias
+     * @description OnixMessage Contract
+     */
+    export interface OnixMessage {
+        rpc: string;
+        request: IRequest;
+    }
+    /**
+     * @interface IRequest
+     * @author Jonathan Casarrubias
+     * @description IRequest inteface
+     */
+    export interface IRequest {
+        metadata: {
+            [key: string]: any;
+            stream?: boolean;
+        };
+        payload: any;
     }
     /**
      * @author Jonathan Casarrubias
@@ -68,17 +89,8 @@ declare module "interfaces/index" {
                 };
             };
         };
-    }
-    /**
-     * @interface IRequest
-     * @author Jonathan Casarrubias
-     * @description IRequest inteface
-     */
-    export interface IRequest {
-        metadata: {
-            [key: string]: any;
-        };
-        payload: any;
+        addListener: (listener: (operation: IAppOperation) => void) => number;
+        removeListener: (index: number) => boolean;
     }
     /**
      * @interface ICall
@@ -98,15 +110,49 @@ declare module "utils/index" {
         function getRandomInt(max: any): number;
     }
 }
-declare module "core/reference" {
-    import { IAppRefConfig, IAppOperation } from "interfaces/index";
-    export class ModuleReference {
+declare module "core/method.reference" {
+    import { ComponentReference } from "core/component.reference";
+    /**
+     * @class ModuleReference
+     * @author Jonathan Casarrubias
+     * @license MIT
+     */
+    export class MethodReference {
         name: string;
-        appReference: AppReference;
-        private components;
-        constructor(name: string, appReference: AppReference);
-        Component(name: string): ComponentReference;
+        componentReference: ComponentReference;
+        /**
+         * @constructor
+         * @param name
+         * @param componentReference
+         */
+        constructor(name: string, componentReference: ComponentReference);
+        /**
+         * @method call
+         * @param payload
+         * @description This method will call for RPC endpoints. It will send an application operation
+         * to the OnixJS Service HOST.
+         */
+        call(payload: any): Promise<any>;
+        /**
+         * @method stream
+         * @param listener
+         * @param payload
+         * @description This method will register a stream, which will be populated as the server keeps
+         * sending chunks of information.
+         */
+        stream(listener: (stream: any) => void, payload?: any): number | undefined;
+        private invalid(type);
+        private endpoint();
     }
+}
+declare module "core/component.reference" {
+    import { MethodReference } from "core/method.reference";
+    import { ModuleReference } from "core/module.reference";
+    /**
+     * @class ModuleReference
+     * @author Jonathan Casarrubias
+     * @license MIT
+     */
     export class ComponentReference {
         name: string;
         moduleReference: ModuleReference;
@@ -114,32 +160,43 @@ declare module "core/reference" {
         constructor(name: string, moduleReference: ModuleReference);
         Method(name: string): MethodReference;
     }
-    export class MethodReference {
+}
+declare module "core/module.reference" {
+    import { ComponentReference } from "core/component.reference";
+    import { AppReference } from "core/app.reference";
+    /**
+     * @class ModuleReference
+     * @author Jonathan Casarrubias
+     * @license MIT
+     */
+    export class ModuleReference {
         name: string;
-        componentReference: ComponentReference;
-        constructor(name: string, componentReference: ComponentReference);
-        call(payload: any): Promise<any>;
-        stream(listener: (stream: any) => void): number | undefined;
-        private invalid(type);
-        private endpoint();
+        appReference: AppReference;
+        private components;
+        constructor(name: string, appReference: AppReference);
+        Component(name: string): ComponentReference;
     }
+}
+declare module "core/app.reference" {
+    import { IAppRefConfig } from "interfaces/index";
+    import { ModuleReference } from "core/module.reference";
     export class AppReference {
         readonly config: IAppRefConfig;
-        private index;
-        private listeners;
-        private modules;
+        modules: {
+            [key: string]: ModuleReference;
+        };
         constructor(config: IAppRefConfig);
-        connect(): Promise<any>;
-        removeListener(id: number): boolean;
-        addListener(listener: (operation: IAppOperation) => void): number;
         Module(name: string): ModuleReference;
     }
 }
 declare module "core/index" {
-    export * from "core/reference";
+    export * from "core/app.reference";
+    export * from "core/module.reference";
+    export * from "core/component.reference";
+    export * from "core/method.reference";
 }
 declare module "index" {
-    import { OnixClientConfig } from "interfaces/index";
+    import { OnixClientConfig, IAppOperation } from "interfaces/index";
     import { AppReference } from "core/index";
     export * from "core/index";
     export * from "interfaces/index";
@@ -152,9 +209,12 @@ declare module "index" {
      */
     export class OnixClient {
         private config;
+        private index;
+        private _ws;
         private _http;
         private _schema;
         private _references;
+        private listeners;
         /**
          * @constructor
          * @param config
@@ -169,10 +229,28 @@ declare module "index" {
          * in order to correctly configure each Application Reference.
          */
         init(): Promise<boolean>;
-        AppReference(name: string): Promise<AppReference | Error>;
+        /**
+         * @class AppReference
+         * @param name
+         * @description This method will construct an application reference.
+         * Only if the provided schema defines it does exist.
+         */
+        AppReference(name: string): AppReference | Error;
+        /**
+         * @method addListener
+         * @param listener
+         * @description This method will register application operation listeners
+         */
+        addListener(listener: (operation: IAppOperation) => void): number;
+        /**
+         * @method removeListener
+         * @param listener
+         * @description This method will unload application operation listeners
+         */
+        removeListener(id: number): boolean;
     }
 }
-declare module "core/browser.adapters" {
+declare module "adapters/browser.adapters" {
     import { IWS } from "interfaces/index";
     import { IHTTP } from "index";
     /**
@@ -206,7 +284,7 @@ declare module "core/browser.adapters" {
         }
     }
 }
-declare module "core/nativescript.adapters" {
+declare module "adapters/nativescript.adapters" {
     import { IWS, IHTTP } from "interfaces/index";
     /**
      * @namespace Nativescript
@@ -239,7 +317,7 @@ declare module "core/nativescript.adapters" {
         }
     }
 }
-declare module "core/node.adapters" {
+declare module "adapters/node.adapters" {
     import { IWS } from "interfaces/index";
     import { IHTTP } from "index";
     /**

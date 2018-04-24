@@ -3,6 +3,7 @@ import {IHTTP} from '..';
 import * as UWS from 'uws';
 import * as http from 'http';
 import * as https from 'https';
+import {Utils} from '../utils';
 /**
  * @namespace NodeJS
  * @author Jonathan Casarrubias
@@ -46,7 +47,9 @@ export namespace NodeJS {
           // Concatenate Response
           res.on('data', data => (body += data));
           // Resolve Call
-          res.on('end', () => resolve(JSON.parse(body)));
+          res.on('end', () =>
+            resolve(Utils.IsJsonString(body) ? JSON.parse(body) : body),
+          );
           // Rehect on error
         };
         if (url.match(/https:\/\//)) {
@@ -76,7 +79,7 @@ export namespace NodeJS {
           res.on('data', data => (body += data));
           // Resolve Call
           res.on('end', () => {
-            resolve(JSON.parse(body));
+            resolve(Utils.IsJsonString(body) ? JSON.parse(body) : body);
           });
           // Rehect on error
         });
