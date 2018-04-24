@@ -7,7 +7,25 @@
 export interface IAppOperation {
   uuid: string;
   type: OperationType;
-  message: any;
+  message: OnixMessage;
+}
+/**
+ * @interface OnixMessage
+ * @author Jonathan Casarrubias
+ * @description OnixMessage Contract
+ */
+export interface OnixMessage {
+  rpc: string;
+  request: IRequest;
+}
+/**
+ * @interface IRequest
+ * @author Jonathan Casarrubias
+ * @description IRequest inteface
+ */
+export interface IRequest {
+  metadata: {[key: string]: any; stream?: boolean};
+  payload: any;
 }
 /**
  * @author Jonathan Casarrubias
@@ -67,16 +85,8 @@ export interface IAppRefConfig {
       };
     };
   };
-}
-
-/**
- * @interface IRequest
- * @author Jonathan Casarrubias
- * @description IRequest inteface
- */
-export interface IRequest {
-  metadata: {[key: string]: any};
-  payload: any;
+  addListener: (listener: (operation: IAppOperation) => void) => number;
+  removeListener: (index: number) => boolean;
 }
 /**
  * @interface ICall
