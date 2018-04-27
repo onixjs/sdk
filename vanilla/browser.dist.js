@@ -253,13 +253,13 @@ define("core/index", ["require", "exports", "core/app.reference", "core/module.r
     __export(component_reference_2);
     __export(method_reference_2);
 });
-define("index", ["require", "exports", "core/index", "utils/index", "core/index", "interfaces/index"], function (require, exports, core_1, utils_2, core_2, interfaces_2) {
+define("index", ["require", "exports", "core/app.reference", "utils/index", "core/index", "interfaces/index"], function (require, exports, app_reference_2, utils_2, core_1, interfaces_2) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
     }
     Object.defineProperty(exports, "__esModule", { value: true });
-    __export(core_2);
+    __export(core_1);
     __export(interfaces_2);
     /**
      * @class OnixClient
@@ -299,7 +299,6 @@ define("index", ["require", "exports", "core/index", "utils/index", "core/index"
             return new Promise(async (resolve, reject) => {
                 // Get OnixJS Schema
                 this._schema = await this._http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
-                console.log('SCHEMA ', this._schema);
                 // URL
                 const url = `${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host.replace(/http[s]{0,1}:\/\//, '')}:${this.config.port}`;
                 // Connect WebSocket
@@ -328,7 +327,7 @@ define("index", ["require", "exports", "core/index", "utils/index", "core/index"
             // If the reference still doesn't exist, then create one
             if (!this._references[name]) {
                 // Use passed host config if any
-                this._references[name] = new core_1.AppReference(Object.assign({
+                this._references[name] = new app_reference_2.AppReference(Object.assign({
                     name,
                     client: this._ws,
                     addListener: (listener) => this.addListener(listener),
