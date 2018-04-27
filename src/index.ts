@@ -5,7 +5,7 @@ import {
   IHTTP,
   IAppRefConfig,
 } from './interfaces';
-import {AppReference} from './core';
+import {AppReference} from './core/app.reference';
 import {Utils} from './utils';
 export * from './core';
 export * from './interfaces';
@@ -49,7 +49,6 @@ export class OnixClient {
       this._schema = await this._http.get(
         `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
       );
-      console.log('SCHEMA ', this._schema);
       // URL
       const url: string = `${
         this.config.port === 443 ? 'wss' : 'ws'

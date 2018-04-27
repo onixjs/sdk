@@ -197,7 +197,7 @@ declare module "core/index" {
 }
 declare module "index" {
     import { OnixClientConfig, IAppOperation } from "interfaces/index";
-    import { AppReference } from "core/index";
+    import { AppReference } from "core/app.reference";
     export * from "core/index";
     export * from "interfaces/index";
     /**
