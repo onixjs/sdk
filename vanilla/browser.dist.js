@@ -107,8 +107,10 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                             request: {
                                 metadata: {
                                     stream: false,
-                                    caller: 'SDK',
-                                    token: 'dummytoken',
+                                    caller: this.componentReference.moduleReference.appReference
+                                        .config.claims.sub,
+                                    token: this.componentReference.moduleReference.appReference
+                                        .config.token,
                                 },
                                 payload,
                             },
@@ -148,8 +150,10 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                         request: {
                             metadata: {
                                 stream: true,
-                                caller: 'SDK',
-                                token: 'dummytoken',
+                                caller: this.componentReference.moduleReference.appReference
+                                    .config.claims.sub,
+                                token: this.componentReference.moduleReference.appReference.config
+                                    .token,
                             },
                             payload,
                         },
@@ -282,9 +286,15 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             this._schema = {}; // TODO Interface Schema
             this._references = {}; // Todo Reference Interface
             this.listeners = {};
-            if (this.config.adapters.http && this.config.adapters.websocket) {
+            if (this.config.adapters.http &&
+                this.config.adapters.websocket &&
+                this.config.adapters.storage) {
                 this._http = new this.config.adapters.http();
                 this._ws = new this.config.adapters.websocket();
+                this._storage = new this.config.adapters.storage();
+                if (!this.config.prefix) {
+                    this.config.prefix = 'onixjs.sdk';
+                }
             }
             else {
                 console.log('ONIXJS SDK: Unable to find suitable adapters.');
@@ -330,6 +340,8 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 this._references[name] = new app_reference_2.AppReference(Object.assign({
                     name,
                     client: this._ws,
+                    token: this.token,
+                    claims: this.claims,
                     addListener: (listener) => this.addListener(listener),
                     removeListener: (id) => this.removeListener(id),
                 }, this._schema[name]));
@@ -340,7 +352,8 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
         /**
          * @method addListener
          * @param listener
-         * @description This method will register application operation listeners
+         * @description This method will register application operation listeners.
+         * TODO PRIVATIZE
          */
         addListener(listener) {
             this.index += 1;
@@ -360,6 +373,45 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             else {
                 return false;
             }
+        }
+        /**
+         * @description This setter will store a provided access token
+         * into the local storage adapter.
+         */
+        set token(token) {
+            this._storage.setItem(`${this.config.prefix}:access_token`, token);
+        }
+        /**
+         * @description This getter will return a stored access token
+         * from the local storage adapter.
+         */
+        get token() {
+            return this._storage.getItem(`${this.config.prefix}:access_token`) || '';
+        }
+        /**
+         * @description This setter will store a provided claims info
+         * into the local storage adapter.
+         */
+        set claims(claims) {
+            this._storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
+        }
+        /**
+         * @description This getter will return a stored claims info
+         * from the local storage adapter.
+         */
+        get claims() {
+            const strclaims = this._storage.getItem(`${this.config.prefix}:claims`) || '';
+            return utils_2.Utils.IsJsonString(strclaims)
+                ? JSON.parse(strclaims)
+                : { sub: '$anonymous' };
+        }
+        /**
+         * @method logout
+         * @description this method will clear the local storage, therefore
+         * cleaning any stored information like token or claims.
+         */
+        logout() {
+            this._storage.clear();
         }
     }
     exports.OnixClient = OnixClient;
@@ -429,6 +481,27 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
             }
         }
         Browser.HTTP = HTTP;
+        /**
+         * @class LocalStorage
+         * @author Jonathan Casarrubias
+         * @description This class is used when the SDK is running in a
+         * Browser Environment.
+         */
+        class LocalStorage {
+            setItem(key, value) {
+                localStorage.setItem(key, value);
+            }
+            getItem(key) {
+                return localStorage.getItem(key);
+            }
+            removeItem(key) {
+                localStorage.removeItem(key);
+            }
+            clear() {
+                localStorage.clear();
+            }
+        }
+        Browser.LocalStorage = LocalStorage;
     })(Browser = exports.Browser || (exports.Browser = {}));
 });
 define("adapters/nativescript.adapters", ["require", "exports"], function (require, exports) {
@@ -493,7 +566,7 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
         Nativescript.HTTP = HTTP;
     })(Nativescript = exports.Nativescript || (exports.Nativescript = {}));
 });
-define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index"], function (require, exports, UWS, http, https, utils_4) {
+define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, UWS, http, https, utils_4, localStorage) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -580,6 +653,29 @@ define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", 
             }
         }
         NodeJS.HTTP = HTTP;
+        /**
+         * @class LocalStorage
+         * @author Jonathan Casarrubias
+         * @description This class is used when the SDK is running in a
+         * NodeJS Environment.
+         *
+         * npm install node-localstorage
+         */
+        class LocalStorage {
+            setItem(key, value) {
+                localStorage.setItem(key, value);
+            }
+            getItem(key) {
+                return localStorage.getItem(key);
+            }
+            removeItem(key) {
+                localStorage.removeItem(key);
+            }
+            clear() {
+                localStorage.clear();
+            }
+        }
+        NodeJS.LocalStorage = LocalStorage;
     })(NodeJS = exports.NodeJS || (exports.NodeJS = {}));
 });
 //# sourceMappingURL=browser.dist.js.map

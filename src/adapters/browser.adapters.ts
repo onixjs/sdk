@@ -1,4 +1,4 @@
-import {IWS} from '../interfaces';
+import {IWS, ILocalStorage} from '../interfaces';
 import {IHTTP} from '..';
 import {Utils} from '../utils';
 // Workaround to avoid naming issues
@@ -63,6 +63,26 @@ export namespace Browser {
         request.open('GET', url, true);
         request.send(null);
       });
+    }
+  }
+  /**
+   * @class LocalStorage
+   * @author Jonathan Casarrubias
+   * @description This class is used when the SDK is running in a
+   * Browser Environment.
+   */
+  export class LocalStorage implements ILocalStorage {
+    setItem(key: string, value: string): void {
+      localStorage.setItem(key, value);
+    }
+    getItem(key: string): string | null {
+      return localStorage.getItem(key);
+    }
+    removeItem(key: string): void {
+      localStorage.removeItem(key);
+    }
+    clear(): void {
+      localStorage.clear();
     }
   }
 }
