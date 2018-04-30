@@ -63,10 +63,12 @@ declare module "interfaces/index" {
         host: string;
         port: number;
         adapters: IAdapters;
+        prefix?: string;
     }
     export interface IAdapters {
         http: new () => IHTTP;
         websocket: new () => IWS;
+        storage: new () => ILocalStorage;
     }
     export interface IHTTP {
         get(url: string): Promise<object>;
@@ -77,11 +79,26 @@ declare module "interfaces/index" {
         send(something: string | object): void;
         open(callback: () => void): void;
     }
+    export interface ILocalStorage {
+        setItem(key: string, value: string): void;
+        getItem(key: string): string | null;
+        removeItem(key: string): void;
+        clear(): void;
+    }
+    export interface IOperationListener {
+        (operation: IAppOperation): void;
+    }
+    export interface IClaims {
+        sub: string;
+        [key: string]: any;
+    }
     export interface IAppRefConfig {
         name: string;
         host: string;
         port: number;
         client: IWS;
+        token: string;
+        claims: IClaims;
         modules: {
             [moduleName: string]: {
                 [componentName: string]: {
@@ -196,7 +213,7 @@ declare module "core/index" {
     export * from "core/method.reference";
 }
 declare module "index" {
-    import { OnixClientConfig, IAppOperation } from "interfaces/index";
+    import { OnixClientConfig, IOperationListener, IClaims } from "interfaces/index";
     import { AppReference } from "core/app.reference";
     export * from "core/index";
     export * from "interfaces/index";
@@ -212,6 +229,7 @@ declare module "index" {
         private index;
         private _ws;
         private _http;
+        private _storage;
         private _schema;
         private _references;
         private listeners;
@@ -239,19 +257,44 @@ declare module "index" {
         /**
          * @method addListener
          * @param listener
-         * @description This method will register application operation listeners
+         * @description This method will register application operation listeners.
+         * TODO PRIVATIZE
          */
-        addListener(listener: (operation: IAppOperation) => void): number;
+        addListener(listener: IOperationListener): number;
         /**
          * @method removeListener
          * @param listener
          * @description This method will unload application operation listeners
          */
         removeListener(id: number): boolean;
+        /**
+         * @description This getter will return a stored access token
+         * from the local storage adapter.
+         */
+        /**
+         * @description This setter will store a provided access token
+         * into the local storage adapter.
+         */
+        token: string;
+        /**
+         * @description This getter will return a stored claims info
+         * from the local storage adapter.
+         */
+        /**
+         * @description This setter will store a provided claims info
+         * into the local storage adapter.
+         */
+        claims: IClaims;
+        /**
+         * @method logout
+         * @description this method will clear the local storage, therefore
+         * cleaning any stored information like token or claims.
+         */
+        logout(): void;
     }
 }
 declare module "adapters/browser.adapters" {
-    import { IWS } from "interfaces/index";
+    import { IWS, ILocalStorage } from "interfaces/index";
     import { IHTTP } from "index";
     /**
      * @namespace Browser
@@ -281,6 +324,18 @@ declare module "adapters/browser.adapters" {
          */
         class HTTP implements IHTTP {
             get(url: string): Promise<object>;
+        }
+        /**
+         * @class LocalStorage
+         * @author Jonathan Casarrubias
+         * @description This class is used when the SDK is running in a
+         * Browser Environment.
+         */
+        class LocalStorage implements ILocalStorage {
+            setItem(key: string, value: string): void;
+            getItem(key: string): string | null;
+            removeItem(key: string): void;
+            clear(): void;
         }
     }
 }
@@ -318,7 +373,7 @@ declare module "adapters/nativescript.adapters" {
     }
 }
 declare module "adapters/node.adapters" {
-    import { IWS } from "interfaces/index";
+    import { IWS, ILocalStorage } from "interfaces/index";
     import { IHTTP } from "index";
     /**
      * @namespace NodeJS
@@ -349,6 +404,20 @@ declare module "adapters/node.adapters" {
         class HTTP implements IHTTP {
             get(url: string): Promise<object>;
             post(config: any, request: any): Promise<object>;
+        }
+        /**
+         * @class LocalStorage
+         * @author Jonathan Casarrubias
+         * @description This class is used when the SDK is running in a
+         * NodeJS Environment.
+         *
+         * npm install node-localstorage
+         */
+        class LocalStorage implements ILocalStorage {
+            setItem(key: string, value: string): void;
+            getItem(key: string): string | null;
+            removeItem(key: string): void;
+            clear(): void;
         }
     }
 }

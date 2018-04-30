@@ -1,9 +1,10 @@
-import {IWS} from '../interfaces';
+import {IWS, ILocalStorage} from '../interfaces';
 import {IHTTP} from '..';
 import * as UWS from 'uws';
 import * as http from 'http';
 import * as https from 'https';
 import {Utils} from '../utils';
+import * as localStorage from 'node-localstorage';
 /**
  * @namespace NodeJS
  * @author Jonathan Casarrubias
@@ -88,6 +89,28 @@ export namespace NodeJS {
         req.write(JSON.stringify(request));
         req.end();
       });
+    }
+  }
+  /**
+   * @class LocalStorage
+   * @author Jonathan Casarrubias
+   * @description This class is used when the SDK is running in a
+   * NodeJS Environment.
+   *
+   * npm install node-localstorage
+   */
+  export class LocalStorage implements ILocalStorage {
+    setItem(key: string, value: string): void {
+      localStorage.setItem(key, value);
+    }
+    getItem(key: string): string | null {
+      return localStorage.getItem(key);
+    }
+    removeItem(key: string): void {
+      localStorage.removeItem(key);
+    }
+    clear(): void {
+      localStorage.clear();
     }
   }
 }

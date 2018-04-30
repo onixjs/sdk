@@ -4,6 +4,9 @@ import {
   IAppOperation,
   IHTTP,
   IAppRefConfig,
+  ILocalStorage,
+  IOperationListener,
+  IClaims,
 } from './interfaces';
 import {AppReference} from './core/app.reference';
 import {Utils} from './utils';
@@ -20,6 +23,7 @@ export class OnixClient {
   private index: number = 0;
   private _ws: IWS;
   private _http: IHTTP;
+  private _storage: ILocalStorage;
   private _schema: any = {}; // TODO Interface Schema
   private _references: {[key: string]: any} = {}; // Todo Reference Interface
   private listeners: {[key: number]: ((operation: IAppOperation) => void)} = {};
@@ -31,9 +35,17 @@ export class OnixClient {
    * provided.
    */
   constructor(private config: OnixClientConfig) {
-    if (this.config.adapters.http && this.config.adapters.websocket) {
+    if (
+      this.config.adapters.http &&
+      this.config.adapters.websocket &&
+      this.config.adapters.storage
+    ) {
       this._http = new this.config.adapters.http();
       this._ws = new this.config.adapters.websocket();
+      this._storage = new this.config.adapters.storage();
+      if (!this.config.prefix) {
+        this.config.prefix = 'onixjs.sdk';
+      }
     } else {
       console.log('ONIXJS SDK: Unable to find suitable adapters.');
     }
@@ -91,7 +103,9 @@ export class OnixClient {
         {
           name,
           client: this._ws,
-          addListener: (listener: (operation: IAppOperation) => void): number =>
+          token: this.token,
+          claims: this.claims,
+          addListener: (listener: IOperationListener): number =>
             this.addListener(listener),
           removeListener: (id: number): boolean => this.removeListener(id),
         },
@@ -104,9 +118,10 @@ export class OnixClient {
   /**
    * @method addListener
    * @param listener
-   * @description This method will register application operation listeners
+   * @description This method will register application operation listeners.
+   * TODO PRIVATIZE
    */
-  addListener(listener: (operation: IAppOperation) => void): number {
+  addListener(listener: IOperationListener): number {
     this.index += 1;
     this.listeners[this.index] = listener;
     return this.index;
@@ -123,5 +138,48 @@ export class OnixClient {
     } else {
       return false;
     }
+  }
+  /**
+   * @description This setter will store a provided access token
+   * into the local storage adapter.
+   */
+  set token(token: string) {
+    this._storage.setItem(`${this.config.prefix}:access_token`, token);
+  }
+  /**
+   * @description This getter will return a stored access token
+   * from the local storage adapter.
+   */
+  get token(): string {
+    return this._storage.getItem(`${this.config.prefix}:access_token`) || '';
+  }
+  /**
+   * @description This setter will store a provided claims info
+   * into the local storage adapter.
+   */
+  set claims(claims: IClaims) {
+    this._storage.setItem(
+      `${this.config.prefix}:claims`,
+      JSON.stringify(claims),
+    );
+  }
+  /**
+   * @description This getter will return a stored claims info
+   * from the local storage adapter.
+   */
+  get claims(): IClaims {
+    const strclaims: string =
+      this._storage.getItem(`${this.config.prefix}:claims`) || '';
+    return Utils.IsJsonString(strclaims)
+      ? JSON.parse(strclaims)
+      : {sub: '$anonymous'};
+  }
+  /**
+   * @method logout
+   * @description this method will clear the local storage, therefore
+   * cleaning any stored information like token or claims.
+   */
+  logout(): void {
+    this._storage.clear();
   }
 }

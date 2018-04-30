@@ -58,10 +58,12 @@ export interface OnixClientConfig {
   host: string;
   port: number;
   adapters: IAdapters;
+  prefix?: string;
 }
 export interface IAdapters {
   http: new () => IHTTP;
   websocket: new () => IWS;
+  storage: new () => ILocalStorage;
 }
 export interface IHTTP {
   get(url: string): Promise<object>;
@@ -72,12 +74,26 @@ export interface IWS {
   send(something: string | object): void;
   open(callback: () => void): void;
 }
-
+export interface ILocalStorage {
+  setItem(key: string, value: string): void;
+  getItem(key: string): string | null;
+  removeItem(key: string): void;
+  clear(): void;
+}
+export interface IOperationListener {
+  (operation: IAppOperation): void;
+}
+export interface IClaims {
+  sub: string;
+  [key: string]: any;
+}
 export interface IAppRefConfig {
   name: string;
   host: string;
   port: number;
   client: IWS;
+  token: string;
+  claims: IClaims;
   modules: {
     [moduleName: string]: {
       [componentName: string]: {

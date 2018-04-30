@@ -39,8 +39,10 @@ export class MethodReference {
             request: <IRequest>{
               metadata: {
                 stream: false,
-                caller: 'SDK',
-                token: 'dummytoken',
+                caller: this.componentReference.moduleReference.appReference
+                  .config.claims.sub,
+                token: this.componentReference.moduleReference.appReference
+                  .config.token,
               },
               payload,
             },
@@ -91,8 +93,10 @@ export class MethodReference {
           request: {
             metadata: {
               stream: true,
-              caller: 'SDK',
-              token: 'dummytoken',
+              caller: this.componentReference.moduleReference.appReference
+                .config.claims.sub,
+              token: this.componentReference.moduleReference.appReference.config
+                .token,
             },
             payload,
           },
