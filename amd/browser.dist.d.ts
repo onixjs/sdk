@@ -414,6 +414,7 @@ declare module "adapters/node.adapters" {
          * npm install node-localstorage
          */
         class LocalStorage implements ILocalStorage {
+            localStorage: any;
             setItem(key: string, value: string): void;
             getItem(key: string): string | null;
             removeItem(key: string): void;

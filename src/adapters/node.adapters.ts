@@ -4,7 +4,7 @@ import * as UWS from 'uws';
 import * as http from 'http';
 import * as https from 'https';
 import {Utils} from '../utils';
-import * as localStorage from 'node-localstorage';
+import {LocalStorage as LS} from 'node-localstorage';
 /**
  * @namespace NodeJS
  * @author Jonathan Casarrubias
@@ -100,17 +100,19 @@ export namespace NodeJS {
    * npm install node-localstorage
    */
   export class LocalStorage implements ILocalStorage {
+    localStorage = new LS('sdk:storage');
+
     setItem(key: string, value: string): void {
-      localStorage.setItem(key, value);
+      this.localStorage.setItem(key, value);
     }
     getItem(key: string): string | null {
-      return localStorage.getItem(key);
+      return this.localStorage.getItem(key);
     }
     removeItem(key: string): void {
-      localStorage.removeItem(key);
+      this.localStorage.removeItem(key);
     }
     clear(): void {
-      localStorage.clear();
+      this.localStorage.clear();
     }
   }
 }
