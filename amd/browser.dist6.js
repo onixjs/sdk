@@ -1,3 +1,11 @@
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
 define("documentation", ["require", "exports", "serve-static", "finalhandler", "http", "path"], function (require, exports, serveStatic, finalhandler, http, path) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -93,41 +101,43 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
          * @description This method will call for RPC endpoints. It will send an application operation
          * to the OnixJS Service HOST.
          */
-        async call(payload) {
-            return new Promise((resolve, reject) => {
-                if (this.invalid('rpc')) {
-                    reject(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
-                }
-                else {
-                    const operation = {
-                        uuid: utils_1.Utils.uuid(),
-                        type: interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
-                        message: {
-                            rpc: this.endpoint(),
-                            request: {
-                                metadata: {
-                                    stream: false,
-                                    caller: this.componentReference.moduleReference.appReference
-                                        .config.claims.sub,
-                                    token: this.componentReference.moduleReference.appReference
-                                        .config.token,
+        call(payload) {
+            return __awaiter(this, void 0, void 0, function* () {
+                return new Promise((resolve, reject) => {
+                    if (this.invalid('rpc')) {
+                        reject(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
+                    }
+                    else {
+                        const operation = {
+                            uuid: utils_1.Utils.uuid(),
+                            type: interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                            message: {
+                                rpc: this.endpoint(),
+                                request: {
+                                    metadata: {
+                                        stream: false,
+                                        caller: this.componentReference.moduleReference.appReference
+                                            .config.claims.sub,
+                                        token: this.componentReference.moduleReference.appReference
+                                            .config.token,
+                                    },
+                                    payload,
                                 },
-                                payload,
                             },
-                        },
-                    };
-                    const listenerId = this.componentReference.moduleReference.appReference.config.addListener((response) => {
-                        if (response.uuid === operation.uuid &&
-                            response.type ===
-                                interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE) {
-                            resolve(response.message.request.payload);
-                            this.componentReference.moduleReference.appReference.config.removeListener(listenerId);
-                        }
-                        // TODO ADD TIMEOUT RESPONSE HERE
-                    });
-                    // Send Operation to Server
-                    this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
-                }
+                        };
+                        const listenerId = this.componentReference.moduleReference.appReference.config.addListener((response) => {
+                            if (response.uuid === operation.uuid &&
+                                response.type ===
+                                    interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE) {
+                                resolve(response.message.request.payload);
+                                this.componentReference.moduleReference.appReference.config.removeListener(listenerId);
+                            }
+                            // TODO ADD TIMEOUT RESPONSE HERE
+                        });
+                        // Send Operation to Server
+                        this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
+                    }
+                });
             });
         }
         /**
@@ -305,22 +315,24 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          * @description this method will get the onix infrastructure schema
          * in order to correctly configure each Application Reference.
          */
-        async init() {
-            return new Promise(async (resolve, reject) => {
-                // Get OnixJS Schema
-                this._schema = await this._http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
-                // URL
-                const url = `${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host.replace(/http[s]{0,1}:\/\//, '')}:${this.config.port}`;
-                // Connect WebSocket
-                this._ws.connect(url);
-                // Register Single WS Listener
-                this._ws.on('message', (data) => {
-                    Object.keys(this.listeners)
-                        .map(key => this.listeners[key])
-                        .forEach((listener) => listener(utils_2.Utils.IsJsonString(data) ? JSON.parse(data) : data));
-                });
-                // When connection is open then resolve
-                this._ws.open(() => resolve());
+        init() {
+            return __awaiter(this, void 0, void 0, function* () {
+                return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
+                    // Get OnixJS Schema
+                    this._schema = yield this._http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
+                    // URL
+                    const url = `${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host.replace(/http[s]{0,1}:\/\//, '')}:${this.config.port}`;
+                    // Connect WebSocket
+                    this._ws.connect(url);
+                    // Register Single WS Listener
+                    this._ws.on('message', (data) => {
+                        Object.keys(this.listeners)
+                            .map(key => this.listeners[key])
+                            .forEach((listener) => listener(utils_2.Utils.IsJsonString(data) ? JSON.parse(data) : data));
+                    });
+                    // When connection is open then resolve
+                    this._ws.open(() => resolve());
+                }));
             });
         }
         /**
@@ -467,16 +479,18 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
          * Browser Environment.
          */
         class HTTP {
-            async get(url) {
-                return new Promise((resolve, reject) => {
-                    const request = new XMLHttpRequest();
-                    request.onreadystatechange = function () {
-                        if (request.readyState === 4) {
-                            resolve(JSON.parse(request.responseText));
-                        }
-                    };
-                    request.open('GET', url, true);
-                    request.send(null);
+            get(url) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return new Promise((resolve, reject) => {
+                        const request = new XMLHttpRequest();
+                        request.onreadystatechange = function () {
+                            if (request.readyState === 4) {
+                                resolve(JSON.parse(request.responseText));
+                            }
+                        };
+                        request.open('GET', url, true);
+                        request.send(null);
+                    });
                 });
             }
         }
@@ -554,19 +568,21 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
          * Nativescript Environment.
          */
         class HTTP {
-            async get(url) {
-                return new Promise((resolve, reject) => {
-                    http.request({ method: 'GET', url }).then(res => {
-                        resolve(res.content.toJSON());
-                        // Rehect on error
-                    }, e => reject(e));
+            get(url) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return new Promise((resolve, reject) => {
+                        http.request({ method: 'GET', url }).then(res => {
+                            resolve(res.content.toJSON());
+                            // Rehect on error
+                        }, e => reject(e));
+                    });
                 });
             }
         }
         Nativescript.HTTP = HTTP;
     })(Nativescript = exports.Nativescript || (exports.Nativescript = {}));
 });
-define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, UWS, http, https, utils_4, localStorage) {
+define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, UWS, http, https, utils_4, node_localstorage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -605,50 +621,54 @@ define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", 
          * NodeJS Environment.
          */
         class HTTP {
-            async get(url) {
-                return new Promise((resolve, reject) => {
-                    const cb = res => {
-                        res.setEncoding('utf8');
-                        let body = '';
-                        // Concatenate Response
-                        res.on('data', data => (body += data));
-                        // Resolve Call
-                        res.on('end', () => resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body));
-                        // Rehect on error
-                    };
-                    if (url.match(/https:\/\//)) {
-                        https.get(url, cb).on('error', e => reject(e));
-                    }
-                    else {
-                        http.get(url, cb).on('error', e => reject(e));
-                    }
+            get(url) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return new Promise((resolve, reject) => {
+                        const cb = res => {
+                            res.setEncoding('utf8');
+                            let body = '';
+                            // Concatenate Response
+                            res.on('data', data => (body += data));
+                            // Resolve Call
+                            res.on('end', () => resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body));
+                            // Rehect on error
+                        };
+                        if (url.match(/https:\/\//)) {
+                            https.get(url, cb).on('error', e => reject(e));
+                        }
+                        else {
+                            http.get(url, cb).on('error', e => reject(e));
+                        }
+                    });
                 });
             }
-            async post(config, request) {
-                return new Promise((resolve, reject) => {
-                    // Set request options (Can be overrided from caller)
-                    const options = Object.assign({
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                    }, config);
-                    // Create request object
-                    const req = http.request(options, function (res) {
-                        res.setEncoding('utf8');
-                        let body = '';
-                        // Concatenate Response
-                        res.on('data', data => (body += data));
-                        // Resolve Call
-                        res.on('end', () => {
-                            resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body);
+            post(config, request) {
+                return __awaiter(this, void 0, void 0, function* () {
+                    return new Promise((resolve, reject) => {
+                        // Set request options (Can be overrided from caller)
+                        const options = Object.assign({
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                        }, config);
+                        // Create request object
+                        const req = http.request(options, function (res) {
+                            res.setEncoding('utf8');
+                            let body = '';
+                            // Concatenate Response
+                            res.on('data', data => (body += data));
+                            // Resolve Call
+                            res.on('end', () => {
+                                resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body);
+                            });
+                            // Rehect on error
                         });
-                        // Rehect on error
+                        req.on('error', e => reject(e));
+                        // write data to request body
+                        req.write(JSON.stringify(request));
+                        req.end();
                     });
-                    req.on('error', e => reject(e));
-                    // write data to request body
-                    req.write(JSON.stringify(request));
-                    req.end();
                 });
             }
         }
@@ -662,20 +682,23 @@ define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", 
          * npm install node-localstorage
          */
         class LocalStorage {
+            constructor() {
+                this.localStorage = new node_localstorage_1.LocalStorage('sdk:storage');
+            }
             setItem(key, value) {
-                localStorage.setItem(key, value);
+                this.localStorage.setItem(key, value);
             }
             getItem(key) {
-                return localStorage.getItem(key);
+                return this.localStorage.getItem(key);
             }
             removeItem(key) {
-                localStorage.removeItem(key);
+                this.localStorage.removeItem(key);
             }
             clear() {
-                localStorage.clear();
+                this.localStorage.clear();
             }
         }
         NodeJS.LocalStorage = LocalStorage;
     })(NodeJS = exports.NodeJS || (exports.NodeJS = {}));
 });
-//# sourceMappingURL=browser.dist.js.map
+//# sourceMappingURL=browser.dist6.js.map
