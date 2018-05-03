@@ -1,4 +1,5 @@
-import {IWS, IHTTP} from '../interfaces';
+import {IWS, IHTTP, ILocalStorage} from '../interfaces';
+const appSettings = require("application-settings");
 require('nativescript-websockets');
 const WS = WebSocket;
 const http = require('http');
@@ -57,6 +58,27 @@ export namespace Nativescript {
           e => reject(e),
         );
       });
+    }
+  }
+
+  /**
+   * @class LocalStorage
+   * @author Miguel Serrano
+   * @description This class is used when the SDK is running in a
+   * Nativescript Environment.
+   */
+  export class LocalStorage implements ILocalStorage {
+    setItem(key: string, value: string): void {
+      appSettings.setString(key, value);
+    }
+    getItem(key: string): string | null {
+      return appSettings.getString(key);
+    }
+    removeItem(key: string): void {
+      appSettings.remove(key);
+    }
+    clear(): void {
+      appSettings.clear();
     }
   }
 }
