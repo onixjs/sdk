@@ -1,5 +1,5 @@
 import {IWS, IHTTP, ILocalStorage} from '../interfaces';
-const appSettings = require("application-settings");
+const appSettings = require('application-settings');
 require('nativescript-websockets');
 const WS = WebSocket;
 const http = require('http');

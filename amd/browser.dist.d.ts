@@ -340,7 +340,7 @@ declare module "adapters/browser.adapters" {
     }
 }
 declare module "adapters/nativescript.adapters" {
-    import { IWS, IHTTP } from "interfaces/index";
+    import { IWS, IHTTP, ILocalStorage } from "interfaces/index";
     /**
      * @namespace Nativescript
      * @author Miguel Serrano
@@ -369,6 +369,18 @@ declare module "adapters/nativescript.adapters" {
          */
         class HTTP implements IHTTP {
             get(url: string): Promise<object>;
+        }
+        /**
+         * @class LocalStorage
+         * @author Miguel Serrano
+         * @description This class is used when the SDK is running in a
+         * Nativescript Environment.
+         */
+        class LocalStorage implements ILocalStorage {
+            setItem(key: string, value: string): void;
+            getItem(key: string): string | null;
+            removeItem(key: string): void;
+            clear(): void;
         }
     }
 }
