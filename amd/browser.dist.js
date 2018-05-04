@@ -507,6 +507,7 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
 define("adapters/nativescript.adapters", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
+    const appSettings = require('application-settings');
     require('nativescript-websockets');
     const WS = WebSocket;
     const http = require('http');
@@ -564,6 +565,27 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
             }
         }
         Nativescript.HTTP = HTTP;
+        /**
+         * @class LocalStorage
+         * @author Miguel Serrano
+         * @description This class is used when the SDK is running in a
+         * Nativescript Environment.
+         */
+        class LocalStorage {
+            setItem(key, value) {
+                appSettings.setString(key, value);
+            }
+            getItem(key) {
+                return appSettings.getString(key);
+            }
+            removeItem(key) {
+                appSettings.remove(key);
+            }
+            clear() {
+                appSettings.clear();
+            }
+        }
+        Nativescript.LocalStorage = LocalStorage;
     })(Nativescript = exports.Nativescript || (exports.Nativescript = {}));
 });
 define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, UWS, http, https, utils_4, node_localstorage_1) {
