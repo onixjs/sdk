@@ -259,7 +259,7 @@ declare module "index" {
          * @description This method will construct an application reference.
          * Only if the provided schema defines it does exist.
          */
-        AppReference(name: string): AppReference | Error;
+        AppReference(name: string): Promise<AppReference | Error>;
         /**
          * @method addListener
          * @param listener

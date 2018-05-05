@@ -96,7 +96,7 @@ export class OnixClient {
    * @description This method will construct an application reference.
    * Only if the provided schema defines it does exist.
    */
-  public AppReference(name: string): AppReference | Error {
+  public async AppReference(name: string): Promise<AppReference | Error> {
     // Verify that the application actually exists on server
     if (!this._schema[name]) {
       return new Error(
@@ -111,7 +111,7 @@ export class OnixClient {
           name,
           client: this._ws,
           token: this.token,
-          claims: this.claims(),
+          claims: await this.claims(),
           addListener: (listener: IOperationListener): number =>
             this.addListener(listener),
           removeListener: (id: number): boolean => this.removeListener(id),
@@ -168,11 +168,29 @@ export class OnixClient {
    * defined within the OIDC Client.
    */
   async claims(): Promise<IClaims> {
+    // Load claims from local storage
+    const persisted: string | null = this._storage.getItem(
+      `${this.config.prefix}:claims`,
+    );
+    // Verify that we already have an actual claims
+    if (persisted) {
+      return <IClaims>JSON.parse(persisted);
+    }
+    // Otherwise verify we actually have an access_token
     if (this.token.length > 0) {
-      return <IClaims>await this._http.get(
+      // Now call from the SSO the user claims
+      const claims = <IClaims>await this._http.get(
         `https://sso.onixjs.io/me?access_token=${this.token}`,
       );
+      // Store now in localstorage
+      this._storage.setItem(
+        `${this.config.prefix}:claims`,
+        JSON.stringify(claims),
+      );
+      // Return the claims
+      return claims;
     } else {
+      // This guy is not even logged, return an anonymous claim
       return {sub: '$anonymous'};
     }
   }
