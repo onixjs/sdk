@@ -349,24 +349,26 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          * Only if the provided schema defines it does exist.
          */
         AppReference(name) {
-            // Verify that the application actually exists on server
-            if (!this._schema[name]) {
-                return new Error(`ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`);
-            }
-            // If the reference still doesn't exist, then create one
-            if (!this._references[name]) {
-                // Use passed host config if any
-                this._references[name] = new app_reference_2.AppReference(Object.assign({
-                    name,
-                    client: this._ws,
-                    token: this.token,
-                    claims: this.claims(),
-                    addListener: (listener) => this.addListener(listener),
-                    removeListener: (id) => this.removeListener(id),
-                }, this._schema[name]));
-            }
-            // Otherwise return a singleton instance of the reference
-            return this._references[name];
+            return __awaiter(this, void 0, void 0, function* () {
+                // Verify that the application actually exists on server
+                if (!this._schema[name]) {
+                    return new Error(`ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`);
+                }
+                // If the reference still doesn't exist, then create one
+                if (!this._references[name]) {
+                    // Use passed host config if any
+                    this._references[name] = new app_reference_2.AppReference(Object.assign({
+                        name,
+                        client: this._ws,
+                        token: this.token,
+                        claims: yield this.claims(),
+                        addListener: (listener) => this.addListener(listener),
+                        removeListener: (id) => this.removeListener(id),
+                    }, this._schema[name]));
+                }
+                // Otherwise return a singleton instance of the reference
+                return this._references[name];
+            });
         }
         /**
          * @method addListener
@@ -416,10 +418,23 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          */
         claims() {
             return __awaiter(this, void 0, void 0, function* () {
+                // Load claims from local storage
+                const persisted = this._storage.getItem(`${this.config.prefix}:claims`);
+                // Verify that we already have an actual claims
+                if (persisted) {
+                    return JSON.parse(persisted);
+                }
+                // Otherwise verify we actually have an access_token
                 if (this.token.length > 0) {
-                    return yield this._http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
+                    // Now call from the SSO the user claims
+                    const claims = yield this._http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
+                    // Store now in localstorage
+                    this._storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
+                    // Return the claims
+                    return claims;
                 }
                 else {
+                    // This guy is not even logged, return an anonymous claim
                     return { sub: '$anonymous' };
                 }
             });
