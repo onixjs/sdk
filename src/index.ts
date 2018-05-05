@@ -84,6 +84,13 @@ export class OnixClient {
     });
   }
   /**
+   * @method disconnect
+   * @description Disconnect from websocket server
+   */
+  public disconnect(): void {
+    this._ws.close();
+  }
+  /**
    * @class AppReference
    * @param name
    * @description This method will construct an application reference.
@@ -104,7 +111,7 @@ export class OnixClient {
           name,
           client: this._ws,
           token: this.token,
-          claims: this.claims,
+          claims: this.claims(),
           addListener: (listener: IOperationListener): number =>
             this.addListener(listener),
           removeListener: (id: number): boolean => this.removeListener(id),
@@ -154,25 +161,20 @@ export class OnixClient {
     return this._storage.getItem(`${this.config.prefix}:access_token`) || '';
   }
   /**
-   * @description This setter will store a provided claims info
-   * into the local storage adapter.
+   * @method claims
+   * @author Jonathan Casarrubias
+   * @description This method will return an OIDC claims object.
+   * Usually will provide the user information and any scope
+   * defined within the OIDC Client.
    */
-  set claims(claims: IClaims) {
-    this._storage.setItem(
-      `${this.config.prefix}:claims`,
-      JSON.stringify(claims),
-    );
-  }
-  /**
-   * @description This getter will return a stored claims info
-   * from the local storage adapter.
-   */
-  get claims(): IClaims {
-    const strclaims: string =
-      this._storage.getItem(`${this.config.prefix}:claims`) || '';
-    return Utils.IsJsonString(strclaims)
-      ? JSON.parse(strclaims)
-      : {sub: '$anonymous'};
+  async claims(): Promise<IClaims> {
+    if (this.token.length > 0) {
+      return <IClaims>await this._http.get(
+        `https://sso.onixjs.io/me?${this.token}`,
+      );
+    } else {
+      return {sub: '$anonymous'};
+    }
   }
   /**
    * @method logout

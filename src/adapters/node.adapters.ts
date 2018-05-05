@@ -24,13 +24,22 @@ export namespace NodeJS {
       this.connection = new UWS(url);
     }
     on(name: string, callback) {
-      this.connection.on(name, callback);
+      switch (name) {
+        case 'close':
+          this.connection.onclose = callback;
+          break;
+        default:
+          this.connection.on(name, callback);
+      }
     }
     send(something: string) {
       this.connection.send(something);
     }
     open(callback) {
       this.connection.on('open', callback);
+    }
+    close() {
+      this.connection.close();
     }
   }
   /**

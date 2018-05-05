@@ -336,6 +336,13 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             });
         }
         /**
+         * @method disconnect
+         * @description Disconnect from websocket server
+         */
+        disconnect() {
+            this._ws.close();
+        }
+        /**
          * @class AppReference
          * @param name
          * @description This method will construct an application reference.
@@ -353,7 +360,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                     name,
                     client: this._ws,
                     token: this.token,
-                    claims: this.claims,
+                    claims: this.claims(),
                     addListener: (listener) => this.addListener(listener),
                     removeListener: (id) => this.removeListener(id),
                 }, this._schema[name]));
@@ -401,21 +408,21 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             return this._storage.getItem(`${this.config.prefix}:access_token`) || '';
         }
         /**
-         * @description This setter will store a provided claims info
-         * into the local storage adapter.
+         * @method claims
+         * @author Jonathan Casarrubias
+         * @description This method will return an OIDC claims object.
+         * Usually will provide the user information and any scope
+         * defined within the OIDC Client.
          */
-        set claims(claims) {
-            this._storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
-        }
-        /**
-         * @description This getter will return a stored claims info
-         * from the local storage adapter.
-         */
-        get claims() {
-            const strclaims = this._storage.getItem(`${this.config.prefix}:claims`) || '';
-            return utils_2.Utils.IsJsonString(strclaims)
-                ? JSON.parse(strclaims)
-                : { sub: '$anonymous' };
+        claims() {
+            return __awaiter(this, void 0, void 0, function* () {
+                if (this.token.length > 0) {
+                    return yield this._http.get(`https://sso.onixjs.io/me?${this.token}`);
+                }
+                else {
+                    return { sub: '$anonymous' };
+                }
+            });
         }
         /**
          * @method logout
@@ -460,6 +467,9 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
                                 : event.data);
                         };
                         break;
+                    case 'close':
+                        this.connection.onclose = callback;
+                        break;
                     default:
                         throw new Error(`ONIX Client: WebSocket event ${name} is not implemented.`);
                 }
@@ -469,6 +479,9 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
             }
             open(callback) {
                 this.connection.onopen = callback;
+            }
+            close() {
+                this.connection.close();
             }
         }
         Browser.WebSocket = WebSocket;
@@ -560,6 +573,9 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
             open(callback) {
                 this.connection.addEventListener('open', callback);
             }
+            close() {
+                this.connection.close();
+            }
         }
         Nativescript.WebSocket = WebSocket;
         /**
@@ -626,13 +642,22 @@ define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", 
                 this.connection = new UWS(url);
             }
             on(name, callback) {
-                this.connection.on(name, callback);
+                switch (name) {
+                    case 'close':
+                        this.connection.onclose = callback;
+                        break;
+                    default:
+                        this.connection.on(name, callback);
+                }
             }
             send(something) {
                 this.connection.send(something);
             }
             open(callback) {
                 this.connection.on('open', callback);
+            }
+            close() {
+                this.connection.close();
             }
         }
         NodeJS.WebSocket = WebSocket;
