@@ -8,10 +8,13 @@ export namespace Utils {
     return true;
   }
 
+  let uuidCounter = 1;
+
   export function uuid() {
-    return `${new Date().getMilliseconds()}:${Utils.getRandomInt(
-      9999999999999,
-    )}:${Utils.getRandomInt(9999999999999)}`;
+    if (uuidCounter === Number.MAX_SAFE_INTEGER) {
+      uuidCounter = 1;
+    }
+    return `${new Date().getMilliseconds()}:${uuidCounter++}`;
   }
 
   export function getRandomInt(max) {
