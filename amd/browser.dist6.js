@@ -417,7 +417,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
         claims() {
             return __awaiter(this, void 0, void 0, function* () {
                 if (this.token.length > 0) {
-                    return yield this._http.get(`https://sso.onixjs.io/me?${this.token}`);
+                    return yield this._http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
                 }
                 else {
                     return { sub: '$anonymous' };

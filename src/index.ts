@@ -170,7 +170,7 @@ export class OnixClient {
   async claims(): Promise<IClaims> {
     if (this.token.length > 0) {
       return <IClaims>await this._http.get(
-        `https://sso.onixjs.io/me?${this.token}`,
+        `https://sso.onixjs.io/me?access_token=${this.token}`,
       );
     } else {
       return {sub: '$anonymous'};

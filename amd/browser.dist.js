@@ -404,7 +404,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          */
         async claims() {
             if (this.token.length > 0) {
-                return await this._http.get(`https://sso.onixjs.io/me?${this.token}`);
+                return await this._http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
             }
             else {
                 return { sub: '$anonymous' };
