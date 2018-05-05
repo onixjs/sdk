@@ -40,6 +40,9 @@ export namespace Nativescript {
     open(callback) {
       this.connection.addEventListener('open', callback);
     }
+    close() {
+      this.connection.close();
+    }
   }
   /**
    * @class HTTP

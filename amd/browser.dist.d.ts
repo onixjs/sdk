@@ -78,6 +78,7 @@ declare module "interfaces/index" {
         on(event: string, callback: (data: MessageEvent | string) => void): void;
         send(something: string | object): void;
         open(callback: () => void): void;
+        close(): void;
     }
     export interface ILocalStorage {
         setItem(key: string, value: string): void;
@@ -248,6 +249,11 @@ declare module "index" {
          */
         init(): Promise<boolean>;
         /**
+         * @method disconnect
+         * @description Disconnect from websocket server
+         */
+        disconnect(): void;
+        /**
          * @class AppReference
          * @param name
          * @description This method will construct an application reference.
@@ -277,14 +283,13 @@ declare module "index" {
          */
         token: string;
         /**
-         * @description This getter will return a stored claims info
-         * from the local storage adapter.
+         * @method claims
+         * @author Jonathan Casarrubias
+         * @description This method will return an OIDC claims object.
+         * Usually will provide the user information and any scope
+         * defined within the OIDC Client.
          */
-        /**
-         * @description This setter will store a provided claims info
-         * into the local storage adapter.
-         */
-        claims: IClaims;
+        claims(): Promise<IClaims>;
         /**
          * @method logout
          * @description this method will clear the local storage, therefore
@@ -315,6 +320,7 @@ declare module "adapters/browser.adapters" {
             on(name: string, callback: any): void;
             send(something: string): void;
             open(callback: any): void;
+            close(): void;
         }
         /**
          * @class HTTP
@@ -360,6 +366,7 @@ declare module "adapters/nativescript.adapters" {
             on(name: string, callback: any): void;
             send(something: string): void;
             open(callback: any): void;
+            close(): void;
         }
         /**
          * @class HTTP
@@ -406,6 +413,7 @@ declare module "adapters/node.adapters" {
             on(name: string, callback: any): void;
             send(something: string): void;
             open(callback: any): void;
+            close(): void;
         }
         /**
          * @class HTTP

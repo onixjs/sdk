@@ -32,6 +32,9 @@ export namespace Browser {
             );
           };
           break;
+        case 'close':
+          this.connection.onclose = callback;
+          break;
         default:
           throw new Error(
             `ONIX Client: WebSocket event ${name} is not implemented.`,
@@ -43,6 +46,9 @@ export namespace Browser {
     }
     open(callback) {
       this.connection.onopen = callback;
+    }
+    close() {
+      this.connection.close();
     }
   }
   /**

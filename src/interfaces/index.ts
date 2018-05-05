@@ -73,6 +73,7 @@ export interface IWS {
   on(event: string, callback: (data: MessageEvent | string) => void): void;
   send(something: string | object): void;
   open(callback: () => void): void;
+  close(): void;
 }
 export interface ILocalStorage {
   setItem(key: string, value: string): void;
