@@ -22,7 +22,7 @@ export class MethodReference {
    * @description This method will call for RPC endpoints. It will send an application operation
    * to the OnixJS Service HOST.
    */
-  async call(payload: any): Promise<any> {
+  async call(payload: any, filter?): Promise<any> {
     return new Promise((resolve, reject) => {
       if (this.invalid('rpc')) {
         reject(
@@ -38,6 +38,7 @@ export class MethodReference {
             rpc: this.endpoint(),
             request: <IRequest>{
               metadata: {
+                filter,
                 stream: false,
                 caller: this.componentReference.moduleReference.appReference
                   .config.claims.sub,
@@ -73,11 +74,11 @@ export class MethodReference {
   /**
    * @method stream
    * @param listener
-   * @param payload
+   * @param filter
    * @description This method will register a stream, which will be populated as the server keeps
    * sending chunks of information.
    */
-  stream(listener: (stream: any) => void, payload?) {
+  stream(listener: (stream: any) => void, filter?) {
     if (this.invalid('stream')) {
       listener(
         new Error(
@@ -92,13 +93,14 @@ export class MethodReference {
           rpc: this.endpoint(),
           request: {
             metadata: {
+              filter,
               stream: true,
               caller: this.componentReference.moduleReference.appReference
                 .config.claims.sub,
               token: this.componentReference.moduleReference.appReference.config
                 .token,
             },
-            payload,
+            payload: undefined,
           },
         },
       };
