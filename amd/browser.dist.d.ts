@@ -150,15 +150,15 @@ declare module "core/method.reference" {
          * @description This method will call for RPC endpoints. It will send an application operation
          * to the OnixJS Service HOST.
          */
-        call(payload: any): Promise<any>;
+        call(payload: any, filter?: any): Promise<any>;
         /**
          * @method stream
          * @param listener
-         * @param payload
+         * @param filter
          * @description This method will register a stream, which will be populated as the server keeps
          * sending chunks of information.
          */
-        stream(listener: (stream: any) => void, payload?: any): number | undefined;
+        stream(listener: (stream: any) => void, filter?: any): number | undefined;
         private invalid(type);
         private endpoint();
     }
