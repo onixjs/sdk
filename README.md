@@ -1,78 +1,80 @@
 OnixJS - Enterprise Grade Framework
 ================
-[![Coverage Status](https://coveralls.io/repos/github/onixjs/core/badge.svg?branch=master)](https://coveralls.io/github/onixjs/core?branch=master) [![Travis](https://img.shields.io/travis/onixjs/core.svg)](https://travis-ci.org/onixjs/core) [![npm (scoped)](https://img.shields.io/npm/v/@onixjs/core.svg)](http://npmjs.com/package/@onixjs/core) [![Beerpay](https://beerpay.io/onixjs/core/make-wish.svg?style=flat)](https://beerpay.io/onixjs/core?focus=wish)
-![alt text](https://raw.githubusercontent.com/onixjs/core/master/misc/onix-splash.png "OnixJS")
+[![Coverage Status](https://coveralls.io/repos/github/onixjs/core/badge.svg?branch=master)](https://coveralls.io/github/onixjs/core?branch=master) [![Travis](https://img.shields.io/travis/onixjs/core.svg)](https://travis-ci.org/onixjs/core) [![npm (scoped)](https://img.shields.io/npm/v/@onixjs/core.svg)](http://npmjs.com/package/@onixjs/core)
 
 
 > **Disclaimer**: This framework is in active development and won't be ready for production until we reach release candidate.
  - **Alpha release date**: Feb 2018
- - **Estimated date for beta release**: MAY 15 2018
+ - **Estimated date for beta release**: May 15 2018
  - **Estimated date for release candidate**: EO2Q/2018
 
 ## Installation
 
 ````sh
-$ npm install --save @onixjs/core
+$ npm install --save @onixjs/sdk
 ````
-## Features
 
-The **[OnixJS] Framework** is an ***Enterprise Grade*** **Node.JS** platform that implements only **Industry Standards** and **Patterns** in order provide the best development experience possible:
+## Description
+The OnixJS Client SDK is the result of [years of experience](https://www.npmjs.com/package/@mean-expert/loopback-sdk-builder) full of lessons, we understood that creating a coupled SDK to a specific front-end framework is such a bad idea, therefore we designed a pattern in order to create a new SDK that is able to run anywhere.
 
-- High-Availability
-- High-Performance
-- Built-in *TypeScript*
-- Single Sign On (*[OIDC] IdP / SSO*)
-- Isomorphic [SDK] *For ES6+/TypeScript Clients that runs on Browser, Mobile, Node.JS*
-- Dependency Injection (*DI*)
-- Middleware Router
-- Compatibility with middleware based modules (e.g. express/bodyparser)
-- View Renderer Compatible with any JS Template Engine (*DoT, EJS, Etc*)
-- Supported Architectural Patterns: *SOA, MSA and MVC*.
-- Representational State Transfer API (*REST API*)
-- Remote Procedure Call and Streams API (*RPC/RPCS APIs*)
-- Module and Component Level LifeCycles (*Hooks*)
-- Back-end compatible with any *ORM* (*LoopBack's Datasource Juggler, Mongoose, Sequelize, TypeORM, Etc*)
+Now everybody is welcome, Angular? React? Vue? Stencil? RequiereJS? Electron? NativeScript? ReactNative? you name it, use it in any framework you want.
 
-## Documentation
-The following link will take you to the [OnixJS Documentation](https://github.com/onixjs/core/wiki)
+## OnixJS Client SDK Example
 
->DISCLAIMER: The wiki is a temporal documentation created to start guiding developers into the [OnixJS] World. An Official Web and More Complete Documentation Sites are currently being developed.
+```js
+import { OnixClient, ComponentReference, AppReference} from '@onixjs/sdk';
+import { Browser } from '@onixjs/sdk/dist/adapters/browser.adapters';
 
-**Examples:** [https://github.com/onixjs/examples](https://github.com/onixjs/examples)
+const sdk: OnixClient = new OnixClient({
+    host: 'http://127.0.0.1',
+    port: 9000,
+    adapters: {
+      http: Browser.HTTP,
+      websocket: Browser.WebSocket,
+      storage: Browser.LocalStorage
+    }
+});
 
-## Philosophy
-The **[OnixJS] FrameWork** is an ***Enterprise Grade*** **Node.JS** platform that implements only **Industry Standards** and **Patterns**.
+let componentRef: ComponentReference;
 
-**Core Objectives**
+// Initialize the SDK
+await this.sdk.init();
+// Create an Application Reference
+const myApp: AppReference | Error = this.sdk.AppReference('MyApp');
+// Verify we got a valid AppReference, else throw the error.
+if (myApp instanceof AppReference) {
+  // Create Component Reference
+  this.componentRef = todoApp.Module('TodoModule').Component('TodoComponent');
+  // Create a listTodos stream reference
+  componentRef.Method('myStream').stream((data) => {
+    console.log(myData);
+  });
+} else {
+  throw myApp;
+}
 
+await componentRef.Method('myRPC').call({ text: input.value });
+```
 
-- **Slightly Opinionated**: Though [OnixJS] provide with a business logic structure based on *SOA*, *MSA* and it does specify how to communicate your services or clients, *we do empower you* to decide which *Front-End Framework*, *ORM* or even an *Server Side Renderer* (Template Engine) to install. By using any of our provided [Factories], you'll be free to make most of the important decisions.
-- **Stability**: We strongly believe that providing a highly featured, tested or covered platform might be great but definitely not enough. We also believe that staging or deploying a project now or in a year MUSTN'T be affected by the Framework or any of its dependencies, being that the reason of why we decided to use the lowest amount of dependencies possible. 
-- **High-Availability**: Either you choose Monolithic *SOA* or *MSA*, your services will run independently in separated processes. While implementing the right patterns and infrastructure, any failure on either of your services won't block or disable access to users or other services.
-- **High-Performance**: [OnixJS] provides with a really small footprint, we don't really add unnecessary and unused features, instead we provide you with artifacts all based on established design patterns for you to build projects with ease, as well as providing ways to flawlessly communicate services and clients. 
-- **Security**: [OnixJS] provides with a fully [OIDC] featured *Single Sign On* IdP, so you can start avoiding expenses on authentication and authorization issues due far simplistic auth implementations not suited for enterprise grade projects.
-- **Compatibility**: A must have goal is to provide not only compatibility with other Middleware Based Node.JS Frameworks, but as described before; compatibility with any ORM, Template Engine, Front-End Framework and even other Programming Languages using the REST API or the [OnixJS] REST Gateway.
-- **Communication**: With the [OnixJS] [Isomorphic] [SDK] you'll be able to easily communicate services to services or services to clients. *Don't want to communicate services over network? No problem, communicate services using STD IO Streams.*
+The example above is a general implementation of the OnixJS Client SDK, but we definitely recommend you to spend some time checking out the examples in different front-end frameworks we built for you:
 
+### Web
+- [Angular](https://github.com/onixjs/examples/tree/master/onixjs-ng)
+- [React](https://github.com/onixjs/examples/tree/master/onixjs-react)
+- [VueJS](https://github.com/onixjs/examples/tree/master/onixjs-vue)
+- [StencilJS](https://github.com/onixjs/examples/tree/master/onixjs-stencil)
+
+### Desktop
+- [Electron](https://github.com/onixjs/examples/tree/master/onixjs-electron)
+
+### Mobile
+- [NativeScript](https://github.com/onixjs/examples/tree/master/onixjs-nativescript)
+- [ReactNative](https://github.com/onixjs/examples/tree/master/onixjs-reactnative)
 
 ## Core Documentation
 
-````sh
-$ git clone git@github.com:onixjs/core.git
-$ cd core
-$ npm install && npm run serve:docs
-````
-Documents will be served on [http://127.0.0.1:3000](http://127.0.0.1:3000)
+A more complete documentation can be found within the [Core Documentation](https://github.com/onixjs/core/wiki).
 
-Note: Core documentation is not focused on end application developers.
-
-## Test
-
-````sh
-$ git clone git@github.com:onixjs/core.git
-$ cd core
-$ npm install && npm run test
-````
 ## Contributors
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
