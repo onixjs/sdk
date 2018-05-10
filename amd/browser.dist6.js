@@ -637,7 +637,7 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
         Nativescript.LocalStorage = LocalStorage;
     })(Nativescript = exports.Nativescript || (exports.Nativescript = {}));
 });
-define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, UWS, http, https, utils_4, node_localstorage_1) {
+define("adapters/node.adapters", ["require", "exports", "ws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, WS, http, https, utils_4, node_localstorage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -656,7 +656,7 @@ define("adapters/node.adapters", ["require", "exports", "uws", "http", "https", 
          */
         class WebSocket {
             connect(url) {
-                this.connection = new UWS(url);
+                this.connection = new WS(url);
             }
             on(name, callback) {
                 switch (name) {

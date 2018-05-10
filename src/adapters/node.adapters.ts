@@ -1,6 +1,6 @@
 import {IWS, ILocalStorage} from '../interfaces';
 import {IHTTP} from '..';
-import * as UWS from 'uws';
+import * as WS from 'ws';
 import * as http from 'http';
 import * as https from 'https';
 import {Utils} from '../utils';
@@ -21,7 +21,7 @@ export namespace NodeJS {
   export class WebSocket implements IWS {
     private connection;
     connect(url: string) {
-      this.connection = new UWS(url);
+      this.connection = new WS(url);
     }
     on(name: string, callback) {
       switch (name) {
