@@ -1,3 +1,5 @@
+import {ListenerCollection} from '../core/listener.collection';
+import {ClientRegistration} from '../core/client.registration';
 /**
  * @author Jonathan Casarrubias
  * @interface IAppOperation
@@ -24,8 +26,20 @@ export interface OnixMessage {
  * @description IRequest inteface
  */
 export interface IRequest {
-  metadata: {[key: string]: any; stream?: boolean};
+  metadata: IMetaData;
   payload: any;
+}
+/**
+ * @interface IMetaData
+ * @author Jonathan Casarrubias
+ * @description Interface used as generic IMetaData class.
+ */
+export interface IMetaData {
+  [key: string]: any;
+  sub?: string;
+  token?: string;
+  stream: boolean;
+  subscription: string;
 }
 /**
  * @author Jonathan Casarrubias
@@ -48,6 +62,12 @@ export enum OperationType {
   /*12*/ ONIX_REMOTE_CALL_STREAM,
   /*13*/ ONIX_REMOTE_CALL_PROCEDURE,
   /*14*/ ONIX_REMOTE_CALL_PROCEDURE_RESPONSE,
+  /*15*/ ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE,
+  /*16*/ ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE,
+  /*17*/ ONIX_REMOTE_REGISTER_CLIENT,
+  /*18*/ ONIX_REMOTE_REGISTER_CLIENT_RESPONSE,
+  /*19*/ ONIX_REMOTE_UNREGISTER_CLIENT,
+  /*20*/ ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE,
 }
 // Required because of different http modules
 export enum RuntimeEnvironment {
@@ -102,8 +122,8 @@ export interface IAppRefConfig {
       };
     };
   };
-  addListener: (listener: (operation: IAppOperation) => void) => number;
-  removeListener: (index: number) => boolean;
+  listeners: ListenerCollection;
+  registration: ClientRegistration;
 }
 /**
  * @interface ICall
@@ -114,4 +134,13 @@ export interface ICall {
   uuid: string;
   rpc: string;
   request: IRequest;
+}
+
+export interface Listener {
+  (operation: IAppOperation): void;
+}
+
+export class ListenerCollectionList {
+  index: number = 0;
+  collection: {[index: number]: Listener} = {};
 }

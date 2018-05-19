@@ -19,6 +19,107 @@ define("documentation", ["require", "exports", "serve-static", "finalhandler", "
     // Listen
     server.listen(3000);
 });
+define("core/listener.collection", ["require", "exports", "interfaces/index"], function (require, exports, interfaces_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * @class ListenerCollection
+     * @author Jonathan Casarrubias
+     * @license MIT
+     * @description This class is a memory database
+     * that will store listeners from across the onixjs
+     * platform.
+     */
+    class ListenerCollection {
+        constructor() {
+            /**
+             * @prop ns
+             * @description This is the current
+             * database namespace, should be modified by
+             * executing the namespace method before any
+             * other procedure.
+             */
+            this.ns = 'default';
+            /**
+             * @prop namespaces
+             * @description This is a list of used namespaces
+             * will be used mainly when destroying this collection.
+             */
+            this.nss = {};
+            /**
+             * @prop listeners
+             * @description In memory collection, contains
+             * all the listeners registered within this context.
+             */
+            this.listeners = {};
+        }
+        /**
+         * @method namespace
+         * @param ns
+         * @description This method will assign a namespace.
+         * Should be executed
+         */
+        namespace(ns) {
+            this.nss[ns] = true;
+            this.ns = ns;
+            return this;
+        }
+        /**
+         * @method namespaces
+         * @param ns
+         * @description This method returns a list of namespaces
+         */
+        namespaces() {
+            return Object.keys(this.nss);
+        }
+        /**
+         * @method add
+         * @param listener
+         * @description This method will add a listener into
+         * the current namespace database
+         */
+        add(listener) {
+            if (!this.listeners[this.ns]) {
+                this.listeners[this.ns] = new interfaces_1.ListenerCollectionList();
+            }
+            else {
+                this.listeners[this.ns].index += 1;
+            }
+            this.listeners[this.ns].collection[this.listeners[this.ns].index] = listener;
+            return this.listeners[this.ns].index;
+        }
+        /**
+         * @method remove
+         * @param index
+         * @description This method will remove a listener from the
+         * current namespace.
+         */
+        remove(index) {
+            if (this.listeners[this.ns].collection[index])
+                delete this.listeners[this.ns].collection[index];
+        }
+        /**
+         * @method broadcast
+         * @param handler
+         * @description will iterate over a collection list of listeners
+         * depending on the current namespace and propagate the received data.
+         */
+        broadcast(data) {
+            Object.keys(this.listeners[this.ns].collection).forEach(index => this.listeners[this.ns].collection[index](data));
+        }
+    }
+    exports.ListenerCollection = ListenerCollection;
+});
+define("core/client.registration", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    class ClientRegistration {
+        constructor(uuid) {
+            this.uuid = uuid;
+        }
+    }
+    exports.ClientRegistration = ClientRegistration;
+});
 define("interfaces/index", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
@@ -44,6 +145,12 @@ define("interfaces/index", ["require", "exports"], function (require, exports) {
         /*12*/ OperationType[OperationType["ONIX_REMOTE_CALL_STREAM"] = 12] = "ONIX_REMOTE_CALL_STREAM";
         /*13*/ OperationType[OperationType["ONIX_REMOTE_CALL_PROCEDURE"] = 13] = "ONIX_REMOTE_CALL_PROCEDURE";
         /*14*/ OperationType[OperationType["ONIX_REMOTE_CALL_PROCEDURE_RESPONSE"] = 14] = "ONIX_REMOTE_CALL_PROCEDURE_RESPONSE";
+        /*15*/ OperationType[OperationType["ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE"] = 15] = "ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE";
+        /*16*/ OperationType[OperationType["ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE"] = 16] = "ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE";
+        /*17*/ OperationType[OperationType["ONIX_REMOTE_REGISTER_CLIENT"] = 17] = "ONIX_REMOTE_REGISTER_CLIENT";
+        /*18*/ OperationType[OperationType["ONIX_REMOTE_REGISTER_CLIENT_RESPONSE"] = 18] = "ONIX_REMOTE_REGISTER_CLIENT_RESPONSE";
+        /*19*/ OperationType[OperationType["ONIX_REMOTE_UNREGISTER_CLIENT"] = 19] = "ONIX_REMOTE_UNREGISTER_CLIENT";
+        /*20*/ OperationType[OperationType["ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE"] = 20] = "ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE";
     })(OperationType = exports.OperationType || (exports.OperationType = {}));
     // Required because of different http modules
     var RuntimeEnvironment;
@@ -51,6 +158,13 @@ define("interfaces/index", ["require", "exports"], function (require, exports) {
         /*0*/ RuntimeEnvironment[RuntimeEnvironment["BROWSER"] = 0] = "BROWSER";
         /*1*/ RuntimeEnvironment[RuntimeEnvironment["NODE_JS"] = 1] = "NODE_JS";
     })(RuntimeEnvironment = exports.RuntimeEnvironment || (exports.RuntimeEnvironment = {}));
+    class ListenerCollectionList {
+        constructor() {
+            this.index = 0;
+            this.collection = {};
+        }
+    }
+    exports.ListenerCollectionList = ListenerCollectionList;
 });
 define("utils/index", ["require", "exports"], function (require, exports) {
     "use strict";
@@ -77,7 +191,80 @@ define("utils/index", ["require", "exports"], function (require, exports) {
         Utils.getRandomInt = getRandomInt;
     })(Utils = exports.Utils || (exports.Utils = {}));
 });
-define("core/method.reference", ["require", "exports", "interfaces/index", "utils/index"], function (require, exports, interfaces_1, utils_1) {
+define("core/unsubscribe", ["require", "exports", "index", "utils/index"], function (require, exports, __1, utils_1) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * @class Unsubscribe
+     * @author Jonathan Casarrubias
+     * @license MIT
+     * @description This class will provide a way
+     * to unsubscribe a stream from the server.
+     */
+    class Unsubscribe {
+        /**
+         * @constructor
+         * @param id
+         * @param operation
+         * @param config
+         * @description This constructor will require the id
+         * of the listener to be unsubscribed, the original operation
+         * sent to the server in order to request the server to unsubscribe
+         * and finally the app config so we can use the listeners database
+         * and websocket client to finalize these listeners.
+         */
+        constructor(id, operation, config) {
+            this.id = id;
+            this.operation = operation;
+            this.config = config;
+        }
+        /**
+         * @method unsubscribe
+         * @description This async method will resolve once the server
+         * successfully unsubscribes the client from the configured
+         * stream operation.
+         */
+        unsubscribe() {
+            return __awaiter(this, void 0, void 0, function* () {
+                return new Promise((resolve, reject) => {
+                    // Create unsubscribe app operation
+                    const operation = {
+                        uuid: utils_1.Utils.uuid(),
+                        type: __1.OperationType.ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE,
+                        message: {
+                            rpc: 'unsubscribe',
+                            request: {
+                                metadata: {
+                                    stream: false,
+                                    subscription: this.config.registration.uuid,
+                                },
+                                payload: this.operation,
+                            },
+                        },
+                    };
+                    // Create a listener for this unsubscription, it will be removed
+                    // once the server finish with the back process.
+                    const id = this.config.listeners.add((response) => {
+                        if (response.uuid === operation.uuid &&
+                            response.type ===
+                                __1.OperationType.ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE) {
+                            // Remove unsubscribe listener
+                            this.config.listeners.remove(id);
+                            // Remove original stream listener
+                            this.config.listeners.remove(this.id);
+                            // Resolve promise
+                            resolve();
+                        }
+                    });
+                    // Communicate the server that we want to get rid of this stream subscription
+                    this.config.client.send(JSON.stringify(operation));
+                });
+            });
+        }
+    }
+    exports.Unsubscribe = Unsubscribe;
+});
+define("core/method.reference", ["require", "exports", "interfaces/index", "utils/index", "core/unsubscribe"], function (require, exports, interfaces_2, utils_2, unsubscribe_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -109,8 +296,8 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                     }
                     else {
                         const operation = {
-                            uuid: utils_1.Utils.uuid(),
-                            type: interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                            uuid: utils_2.Utils.uuid(),
+                            type: interfaces_2.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
                             message: {
                                 rpc: this.endpoint(),
                                 request: {
@@ -121,17 +308,19 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                                             .config.claims.sub,
                                         token: this.componentReference.moduleReference.appReference
                                             .config.token,
+                                        subscription: this.componentReference.moduleReference
+                                            .appReference.config.registration.uuid,
                                     },
                                     payload,
                                 },
                             },
                         };
-                        const listenerId = this.componentReference.moduleReference.appReference.config.addListener((response) => {
+                        const listenerId = this.componentReference.moduleReference.appReference.config.listeners.add((response) => {
                             if (response.uuid === operation.uuid &&
                                 response.type ===
-                                    interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE) {
+                                    interfaces_2.OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE) {
+                                this.componentReference.moduleReference.appReference.config.listeners.remove(listenerId);
                                 resolve(response.message.request.payload);
-                                this.componentReference.moduleReference.appReference.config.removeListener(listenerId);
                             }
                             // TODO ADD TIMEOUT RESPONSE HERE
                         });
@@ -154,8 +343,8 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
             }
             else {
                 const operation = {
-                    uuid: utils_1.Utils.uuid(),
-                    type: interfaces_1.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                    uuid: utils_2.Utils.uuid(),
+                    type: interfaces_2.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
                     message: {
                         rpc: this.endpoint(),
                         request: {
@@ -166,6 +355,8 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                                     .config.claims.sub,
                                 token: this.componentReference.moduleReference.appReference.config
                                     .token,
+                                subscription: this.componentReference.moduleReference.appReference
+                                    .config.registration.uuid,
                             },
                             payload: undefined,
                         },
@@ -174,12 +365,13 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                 // Register Stream
                 this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
                 // Chunks of information will be received in a future
-                return this.componentReference.moduleReference.appReference.config.addListener((response) => {
+                const id = this.componentReference.moduleReference.appReference.config.listeners.add((response) => {
                     if (response.uuid === operation.uuid &&
-                        response.type === interfaces_1.OperationType.ONIX_REMOTE_CALL_STREAM) {
+                        response.type === interfaces_2.OperationType.ONIX_REMOTE_CALL_STREAM) {
                         listener(response.message.request.payload);
                     }
                 });
+                return new unsubscribe_1.Unsubscribe(id, operation, this.componentReference.moduleReference.appReference.config);
             }
         }
         invalid(type) {
@@ -258,7 +450,7 @@ define("core/app.reference", ["require", "exports", "core/module.reference"], fu
     }
     exports.AppReference = AppReference;
 });
-define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2) {
+define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference", "core/listener.collection"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2, listener_collection_1) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -268,15 +460,16 @@ define("core/index", ["require", "exports", "core/app.reference", "core/module.r
     __export(module_reference_2);
     __export(component_reference_2);
     __export(method_reference_2);
+    exports.ListenerCollection = listener_collection_1.ListenerCollection;
 });
-define("index", ["require", "exports", "core/app.reference", "utils/index", "core/index", "interfaces/index"], function (require, exports, app_reference_2, utils_2, core_1, interfaces_2) {
+define("index", ["require", "exports", "interfaces/index", "core/app.reference", "utils/index", "core/listener.collection", "core/client.registration", "core/index", "interfaces/index"], function (require, exports, interfaces_3, app_reference_2, utils_3, listener_collection_2, client_registration_1, core_1, interfaces_4) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
     }
     Object.defineProperty(exports, "__esModule", { value: true });
     __export(core_1);
-    __export(interfaces_2);
+    __export(interfaces_4);
     /**
      * @class OnixClient
      * @author Jonathan Casarrubias <gh: mean-expert-official>
@@ -294,16 +487,15 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          */
         constructor(config) {
             this.config = config;
-            this.index = 0;
-            this._schema = {}; // TODO Interface Schema
-            this._references = {}; // Todo Reference Interface
-            this.listeners = {};
+            this.listeners = new listener_collection_2.ListenerCollection();
+            this.schema = {}; // TODO Interface Schema
+            this.references = {}; // Todo Reference Interface
             if (this.config.adapters.http &&
                 this.config.adapters.websocket &&
                 this.config.adapters.storage) {
-                this._http = new this.config.adapters.http();
-                this._ws = new this.config.adapters.websocket();
-                this._storage = new this.config.adapters.storage();
+                this.http = new this.config.adapters.http();
+                this.ws = new this.config.adapters.websocket();
+                this.storage = new this.config.adapters.storage();
                 if (!this.config.prefix) {
                     this.config.prefix = 'onixjs.sdk';
                 }
@@ -321,28 +513,70 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             return __awaiter(this, void 0, void 0, function* () {
                 return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                     // Get OnixJS Schema
-                    this._schema = yield this._http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
+                    this.schema = yield this.http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
                     // URL
                     const url = `${this.config.port === 443 ? 'wss' : 'ws'}://${this.config.host.replace(/http[s]{0,1}:\/\//, '')}:${this.config.port}`;
                     // Connect WebSocket
-                    this._ws.connect(url);
+                    this.ws.connect(url);
                     // Register Single WS Listener
-                    this._ws.on('message', (data) => {
-                        Object.keys(this.listeners)
-                            .map(key => this.listeners[key])
-                            .forEach((listener) => listener(utils_2.Utils.IsJsonString(data) ? JSON.parse(data) : data));
-                    });
-                    // When connection is open then resolve
-                    this._ws.open(() => resolve());
+                    this.ws.on('message', (data) => this.listeners.broadcast(utils_3.Utils.IsJsonString(data) ? JSON.parse(data) : data));
+                    // When connection is open then register and resolve
+                    this.ws.open(() => this.register(resolve, reject));
                 }));
             });
+        }
+        /**
+         * @method
+         * @param resolve
+         */
+        register(resolve, reject) {
+            const uuid = utils_3.Utils.uuid();
+            // Register Client
+            const operation = {
+                uuid,
+                type: interfaces_3.OperationType.ONIX_REMOTE_REGISTER_CLIENT,
+                message: {
+                    rpc: 'register',
+                    request: {
+                        metadata: {
+                            stream: false,
+                            subscription: uuid,
+                        },
+                        payload: {},
+                    },
+                },
+            };
+            // Create listener
+            const index = this.listeners.add((data) => {
+                // Verify we actually get an object
+                const response = (typeof data ===
+                    'string' && utils_3.Utils.IsJsonString(data)
+                    ? JSON.parse(data)
+                    : data);
+                // Verify we got the result, which will provide the registration
+                // Later might be used on handled disconnections.
+                if (response.uuid === operation.uuid &&
+                    response.type === interfaces_3.OperationType.ONIX_REMOTE_REGISTER_CLIENT_RESPONSE) {
+                    if (response.message.request.payload.code &&
+                        response.message.request.payload.message) {
+                        reject(response.message.request.payload);
+                    }
+                    else {
+                        this.registration = new client_registration_1.ClientRegistration(uuid);
+                        this.listeners.remove(index);
+                        resolve();
+                    }
+                }
+            });
+            // Send registration operation
+            this.ws.send(JSON.stringify(operation));
         }
         /**
          * @method disconnect
          * @description Disconnect from websocket server
          */
         disconnect() {
-            this._ws.close();
+            this.ws.close();
         }
         /**
          * @class AppReference
@@ -353,63 +587,38 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
         AppReference(name) {
             return __awaiter(this, void 0, void 0, function* () {
                 // Verify that the application actually exists on server
-                if (!this._schema[name]) {
+                if (!this.schema[name]) {
                     return new Error(`ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`);
                 }
                 // If the reference still doesn't exist, then create one
-                if (!this._references[name]) {
+                if (!this.references[name]) {
                     // Use passed host config if any
-                    this._references[name] = new app_reference_2.AppReference(Object.assign({
+                    this.references[name] = new app_reference_2.AppReference(Object.assign({
                         name,
-                        client: this._ws,
+                        client: this.ws,
                         token: this.token,
                         claims: yield this.claims(),
-                        addListener: (listener) => this.addListener(listener),
-                        removeListener: (id) => this.removeListener(id),
-                    }, this._schema[name]));
+                        listeners: this.listeners,
+                        registration: this.registration,
+                    }, this.schema[name]));
                 }
                 // Otherwise return a singleton instance of the reference
-                return this._references[name];
+                return this.references[name];
             });
-        }
-        /**
-         * @method addListener
-         * @param listener
-         * @description This method will register application operation listeners.
-         * TODO PRIVATIZE
-         */
-        addListener(listener) {
-            this.index += 1;
-            this.listeners[this.index] = listener;
-            return this.index;
-        }
-        /**
-         * @method removeListener
-         * @param listener
-         * @description This method will unload application operation listeners
-         */
-        removeListener(id) {
-            if (this.listeners[id]) {
-                delete this.listeners[id];
-                return true;
-            }
-            else {
-                return false;
-            }
         }
         /**
          * @description This setter will store a provided access token
          * into the local storage adapter.
          */
         set token(token) {
-            this._storage.setItem(`${this.config.prefix}:access_token`, token);
+            this.storage.setItem(`${this.config.prefix}:access_token`, token);
         }
         /**
          * @description This getter will return a stored access token
          * from the local storage adapter.
          */
         get token() {
-            return this._storage.getItem(`${this.config.prefix}:access_token`) || '';
+            return this.storage.getItem(`${this.config.prefix}:access_token`) || '';
         }
         /**
          * @method claims
@@ -421,7 +630,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
         claims() {
             return __awaiter(this, void 0, void 0, function* () {
                 // Load claims from local storage
-                const persisted = this._storage.getItem(`${this.config.prefix}:claims`);
+                const persisted = this.storage.getItem(`${this.config.prefix}:claims`);
                 // Verify that we already have an actual claims
                 if (persisted) {
                     return JSON.parse(persisted);
@@ -429,9 +638,9 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 // Otherwise verify we actually have an access_token
                 if (this.token.length > 0) {
                     // Now call from the SSO the user claims
-                    const claims = yield this._http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
+                    const claims = yield this.http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
                     // Store now in localstorage
-                    this._storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
+                    this.storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
                     // Return the claims
                     return claims;
                 }
@@ -447,12 +656,12 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          * cleaning any stored information like token or claims.
          */
         logout() {
-            this._storage.clear();
+            this.storage.clear();
         }
     }
     exports.OnixClient = OnixClient;
 });
-define("adapters/browser.adapters", ["require", "exports", "utils/index"], function (require, exports, utils_3) {
+define("adapters/browser.adapters", ["require", "exports", "utils/index"], function (require, exports, utils_4) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     // Workaround to avoid naming issues
@@ -479,7 +688,7 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
                 switch (name) {
                     case 'message':
                         this.connection.onmessage = event => {
-                            callback(utils_3.Utils.IsJsonString(event.data)
+                            callback(utils_4.Utils.IsJsonString(event.data)
                                 ? JSON.parse(event.data)
                                 : event.data);
                         };
@@ -637,7 +846,7 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
         Nativescript.LocalStorage = LocalStorage;
     })(Nativescript = exports.Nativescript || (exports.Nativescript = {}));
 });
-define("adapters/node.adapters", ["require", "exports", "ws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, WS, http, https, utils_4, node_localstorage_1) {
+define("adapters/node.adapters", ["require", "exports", "ws", "http", "https", "utils/index", "node-localstorage"], function (require, exports, WS, http, https, utils_5, node_localstorage_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -694,7 +903,7 @@ define("adapters/node.adapters", ["require", "exports", "ws", "http", "https", "
                             // Concatenate Response
                             res.on('data', data => (body += data));
                             // Resolve Call
-                            res.on('end', () => resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body));
+                            res.on('end', () => resolve(utils_5.Utils.IsJsonString(body) ? JSON.parse(body) : body));
                             // Rehect on error
                         };
                         if (url.match(/https:\/\//)) {
@@ -724,7 +933,7 @@ define("adapters/node.adapters", ["require", "exports", "ws", "http", "https", "
                             res.on('data', data => (body += data));
                             // Resolve Call
                             res.on('end', () => {
-                                resolve(utils_4.Utils.IsJsonString(body) ? JSON.parse(body) : body);
+                                resolve(utils_5.Utils.IsJsonString(body) ? JSON.parse(body) : body);
                             });
                             // Rehect on error
                         });

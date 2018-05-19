@@ -1,6 +1,7 @@
 import {ComponentReference} from './component.reference';
 import {IAppOperation, OperationType, IRequest} from '../interfaces';
 import {Utils} from '../utils';
+import {Unsubscribe} from './unsubscribe';
 /**
  * @class ModuleReference
  * @author Jonathan Casarrubias
@@ -44,22 +45,24 @@ export class MethodReference {
                   .config.claims.sub,
                 token: this.componentReference.moduleReference.appReference
                   .config.token,
+                subscription: this.componentReference.moduleReference
+                  .appReference.config.registration.uuid,
               },
               payload,
             },
           },
         };
-        const listenerId: number = this.componentReference.moduleReference.appReference.config.addListener(
+        const listenerId: number = this.componentReference.moduleReference.appReference.config.listeners.add(
           (response: IAppOperation) => {
             if (
               response.uuid === operation.uuid &&
               response.type ===
                 OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE
             ) {
-              resolve(response.message.request.payload);
-              this.componentReference.moduleReference.appReference.config.removeListener(
+              this.componentReference.moduleReference.appReference.config.listeners.remove(
                 listenerId,
               );
+              resolve(response.message.request.payload);
             }
             // TODO ADD TIMEOUT RESPONSE HERE
           },
@@ -99,6 +102,8 @@ export class MethodReference {
                 .config.claims.sub,
               token: this.componentReference.moduleReference.appReference.config
                 .token,
+              subscription: this.componentReference.moduleReference.appReference
+                .config.registration.uuid,
             },
             payload: undefined,
           },
@@ -109,7 +114,7 @@ export class MethodReference {
         JSON.stringify(operation),
       );
       // Chunks of information will be received in a future
-      return this.componentReference.moduleReference.appReference.config.addListener(
+      const id: number = this.componentReference.moduleReference.appReference.config.listeners.add(
         (response: IAppOperation) => {
           if (
             response.uuid === operation.uuid &&
@@ -118,6 +123,12 @@ export class MethodReference {
             listener(response.message.request.payload);
           }
         },
+      );
+
+      return new Unsubscribe(
+        id,
+        operation,
+        this.componentReference.moduleReference.appReference.config,
       );
     }
   }
