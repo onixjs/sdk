@@ -1,15 +1,17 @@
 import {
   OnixClientConfig,
   IWS,
-  IAppOperation,
   IHTTP,
   IAppRefConfig,
   ILocalStorage,
-  IOperationListener,
   IClaims,
+  IAppOperation,
+  OperationType,
 } from './interfaces';
 import {AppReference} from './core/app.reference';
 import {Utils} from './utils';
+import {ListenerCollection} from './core/listener.collection';
+import {ClientRegistration} from './core/client.registration';
 export * from './core';
 export * from './interfaces';
 /**
@@ -20,13 +22,13 @@ export * from './interfaces';
  * client applications.
  */
 export class OnixClient {
-  private index: number = 0;
-  private _ws: IWS;
-  private _http: IHTTP;
-  private _storage: ILocalStorage;
-  private _schema: any = {}; // TODO Interface Schema
-  private _references: {[key: string]: any} = {}; // Todo Reference Interface
-  private listeners: {[key: number]: ((operation: IAppOperation) => void)} = {};
+  private ws: IWS;
+  private http: IHTTP;
+  private storage: ILocalStorage;
+  private listeners: ListenerCollection = new ListenerCollection();
+  private schema: any = {}; // TODO Interface Schema
+  private references: {[key: string]: any} = {}; // Todo Reference Interface
+  protected registration: ClientRegistration;
   /**
    * @constructor
    * @param config
@@ -40,9 +42,9 @@ export class OnixClient {
       this.config.adapters.websocket &&
       this.config.adapters.storage
     ) {
-      this._http = new this.config.adapters.http();
-      this._ws = new this.config.adapters.websocket();
-      this._storage = new this.config.adapters.storage();
+      this.http = new this.config.adapters.http();
+      this.ws = new this.config.adapters.websocket();
+      this.storage = new this.config.adapters.storage();
       if (!this.config.prefix) {
         this.config.prefix = 'onixjs.sdk';
       }
@@ -58,7 +60,7 @@ export class OnixClient {
   public async init(): Promise<boolean> {
     return new Promise<any>(async (resolve, reject) => {
       // Get OnixJS Schema
-      this._schema = await this._http.get(
+      this.schema = await this.http.get(
         `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
       );
       // URL
@@ -68,27 +70,72 @@ export class OnixClient {
         this.config.port
       }`;
       // Connect WebSocket
-      this._ws.connect(url);
+      this.ws.connect(url);
       // Register Single WS Listener
-      this._ws.on('message', (data: string) => {
-        Object.keys(this.listeners)
-          .map(key => this.listeners[key])
-          .forEach((listener: (data: IAppOperation) => void) =>
-            listener(
-              Utils.IsJsonString(data) ? JSON.parse(<string>data) : data,
-            ),
-          );
-      });
-      // When connection is open then resolve
-      this._ws.open(() => resolve());
+      this.ws.on('message', (data: string) =>
+        this.listeners.broadcast(
+          Utils.IsJsonString(data) ? JSON.parse(data) : data,
+        ),
+      );
+      // When connection is open then register and resolve
+      this.ws.open(() => this.register(resolve, reject));
     });
+  }
+  /**
+   * @method
+   * @param resolve
+   */
+  private register(resolve, reject) {
+    const uuid: string = Utils.uuid();
+    // Register Client
+    const operation: IAppOperation = {
+      uuid,
+      type: OperationType.ONIX_REMOTE_REGISTER_CLIENT,
+      message: {
+        rpc: 'register',
+        request: {
+          metadata: {
+            stream: false,
+            subscription: uuid,
+          },
+          payload: {},
+        },
+      },
+    };
+    // Create listener
+    const index: number = this.listeners.add((data: IAppOperation | string) => {
+      // Verify we actually get an object
+      const response: IAppOperation = <IAppOperation>(typeof data ===
+        'string' && Utils.IsJsonString(data)
+        ? JSON.parse(data)
+        : data);
+      // Verify we got the result, which will provide the registration
+      // Later might be used on handled disconnections.
+      if (
+        response.uuid === operation.uuid &&
+        response.type === OperationType.ONIX_REMOTE_REGISTER_CLIENT_RESPONSE
+      ) {
+        if (
+          response.message.request.payload.code &&
+          response.message.request.payload.message
+        ) {
+          reject(response.message.request.payload);
+        } else {
+          this.registration = new ClientRegistration(uuid);
+          this.listeners.remove(index);
+          resolve();
+        }
+      }
+    });
+    // Send registration operation
+    this.ws.send(JSON.stringify(operation));
   }
   /**
    * @method disconnect
    * @description Disconnect from websocket server
    */
   public disconnect(): void {
-    this._ws.close();
+    this.ws.close();
   }
   /**
    * @class AppReference
@@ -98,67 +145,44 @@ export class OnixClient {
    */
   public async AppReference(name: string): Promise<AppReference | Error> {
     // Verify that the application actually exists on server
-    if (!this._schema[name]) {
+    if (!this.schema[name]) {
       return new Error(
         `ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`,
       );
     }
     // If the reference still doesn't exist, then create one
-    if (!this._references[name]) {
+    if (!this.references[name]) {
       // Use passed host config if any
-      this._references[name] = new AppReference(<IAppRefConfig>Object.assign(
-        {
-          name,
-          client: this._ws,
-          token: this.token,
-          claims: await this.claims(),
-          addListener: (listener: IOperationListener): number =>
-            this.addListener(listener),
-          removeListener: (id: number): boolean => this.removeListener(id),
-        },
-        this._schema[name],
-      ));
+      this.references[name] = new AppReference(
+        Object.assign(
+          <IAppRefConfig>{
+            name,
+            client: this.ws,
+            token: this.token,
+            claims: await this.claims(),
+            listeners: this.listeners,
+            registration: this.registration,
+          },
+          this.schema[name],
+        ),
+      );
     }
     // Otherwise return a singleton instance of the reference
-    return this._references[name];
-  }
-  /**
-   * @method addListener
-   * @param listener
-   * @description This method will register application operation listeners.
-   * TODO PRIVATIZE
-   */
-  addListener(listener: IOperationListener): number {
-    this.index += 1;
-    this.listeners[this.index] = listener;
-    return this.index;
-  }
-  /**
-   * @method removeListener
-   * @param listener
-   * @description This method will unload application operation listeners
-   */
-  removeListener(id: number): boolean {
-    if (this.listeners[id]) {
-      delete this.listeners[id];
-      return true;
-    } else {
-      return false;
-    }
+    return this.references[name];
   }
   /**
    * @description This setter will store a provided access token
    * into the local storage adapter.
    */
   set token(token: string) {
-    this._storage.setItem(`${this.config.prefix}:access_token`, token);
+    this.storage.setItem(`${this.config.prefix}:access_token`, token);
   }
   /**
    * @description This getter will return a stored access token
    * from the local storage adapter.
    */
   get token(): string {
-    return this._storage.getItem(`${this.config.prefix}:access_token`) || '';
+    return this.storage.getItem(`${this.config.prefix}:access_token`) || '';
   }
   /**
    * @method claims
@@ -169,7 +193,7 @@ export class OnixClient {
    */
   async claims(): Promise<IClaims> {
     // Load claims from local storage
-    const persisted: string | null = this._storage.getItem(
+    const persisted: string | null = this.storage.getItem(
       `${this.config.prefix}:claims`,
     );
     // Verify that we already have an actual claims
@@ -179,11 +203,11 @@ export class OnixClient {
     // Otherwise verify we actually have an access_token
     if (this.token.length > 0) {
       // Now call from the SSO the user claims
-      const claims = <IClaims>await this._http.get(
+      const claims = <IClaims>await this.http.get(
         `https://sso.onixjs.io/me?access_token=${this.token}`,
       );
       // Store now in localstorage
-      this._storage.setItem(
+      this.storage.setItem(
         `${this.config.prefix}:claims`,
         JSON.stringify(claims),
       );
@@ -200,6 +224,6 @@ export class OnixClient {
    * cleaning any stored information like token or claims.
    */
   logout(): void {
-    this._storage.clear();
+    this.storage.clear();
   }
 }

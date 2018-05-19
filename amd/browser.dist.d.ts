@@ -1,6 +1,81 @@
 declare module "documentation" {
 }
+declare module "core/listener.collection" {
+    import { Listener } from "interfaces/index";
+    /**
+     * @class ListenerCollection
+     * @author Jonathan Casarrubias
+     * @license MIT
+     * @description This class is a memory database
+     * that will store listeners from across the onixjs
+     * platform.
+     */
+    export class ListenerCollection {
+        /**
+         * @prop ns
+         * @description This is the current
+         * database namespace, should be modified by
+         * executing the namespace method before any
+         * other procedure.
+         */
+        private ns;
+        /**
+         * @prop namespaces
+         * @description This is a list of used namespaces
+         * will be used mainly when destroying this collection.
+         */
+        private nss;
+        /**
+         * @prop listeners
+         * @description In memory collection, contains
+         * all the listeners registered within this context.
+         */
+        private listeners;
+        /**
+         * @method namespace
+         * @param ns
+         * @description This method will assign a namespace.
+         * Should be executed
+         */
+        namespace(ns: string): this;
+        /**
+         * @method namespaces
+         * @param ns
+         * @description This method returns a list of namespaces
+         */
+        namespaces(): string[];
+        /**
+         * @method add
+         * @param listener
+         * @description This method will add a listener into
+         * the current namespace database
+         */
+        add(listener: Listener): number;
+        /**
+         * @method remove
+         * @param index
+         * @description This method will remove a listener from the
+         * current namespace.
+         */
+        remove(index: any): void;
+        /**
+         * @method broadcast
+         * @param handler
+         * @description will iterate over a collection list of listeners
+         * depending on the current namespace and propagate the received data.
+         */
+        broadcast(data: any): void;
+    }
+}
+declare module "core/client.registration" {
+    export class ClientRegistration {
+        uuid: string;
+        constructor(uuid: string);
+    }
+}
 declare module "interfaces/index" {
+    import { ListenerCollection } from "core/listener.collection";
+    import { ClientRegistration } from "core/client.registration";
     /**
      * @author Jonathan Casarrubias
      * @interface IAppOperation
@@ -27,11 +102,20 @@ declare module "interfaces/index" {
      * @description IRequest inteface
      */
     export interface IRequest {
-        metadata: {
-            [key: string]: any;
-            stream?: boolean;
-        };
+        metadata: IMetaData;
         payload: any;
+    }
+    /**
+     * @interface IMetaData
+     * @author Jonathan Casarrubias
+     * @description Interface used as generic IMetaData class.
+     */
+    export interface IMetaData {
+        [key: string]: any;
+        sub?: string;
+        token?: string;
+        stream: boolean;
+        subscription: string;
     }
     /**
      * @author Jonathan Casarrubias
@@ -54,6 +138,12 @@ declare module "interfaces/index" {
         ONIX_REMOTE_CALL_STREAM = 12,
         ONIX_REMOTE_CALL_PROCEDURE = 13,
         ONIX_REMOTE_CALL_PROCEDURE_RESPONSE = 14,
+        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE = 15,
+        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE = 16,
+        ONIX_REMOTE_REGISTER_CLIENT = 17,
+        ONIX_REMOTE_REGISTER_CLIENT_RESPONSE = 18,
+        ONIX_REMOTE_UNREGISTER_CLIENT = 19,
+        ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE = 20,
     }
     export enum RuntimeEnvironment {
         BROWSER = 0,
@@ -107,8 +197,8 @@ declare module "interfaces/index" {
                 };
             };
         };
-        addListener: (listener: (operation: IAppOperation) => void) => number;
-        removeListener: (index: number) => boolean;
+        listeners: ListenerCollection;
+        registration: ClientRegistration;
     }
     /**
      * @interface ICall
@@ -120,6 +210,15 @@ declare module "interfaces/index" {
         rpc: string;
         request: IRequest;
     }
+    export interface Listener {
+        (operation: IAppOperation): void;
+    }
+    export class ListenerCollectionList {
+        index: number;
+        collection: {
+            [index: number]: Listener;
+        };
+    }
 }
 declare module "utils/index" {
     export namespace Utils {
@@ -128,8 +227,43 @@ declare module "utils/index" {
         function getRandomInt(max: any): number;
     }
 }
+declare module "core/unsubscribe" {
+    import { IAppOperation, IAppRefConfig } from "index";
+    /**
+     * @class Unsubscribe
+     * @author Jonathan Casarrubias
+     * @license MIT
+     * @description This class will provide a way
+     * to unsubscribe a stream from the server.
+     */
+    export class Unsubscribe {
+        private id;
+        private operation;
+        private config;
+        /**
+         * @constructor
+         * @param id
+         * @param operation
+         * @param config
+         * @description This constructor will require the id
+         * of the listener to be unsubscribed, the original operation
+         * sent to the server in order to request the server to unsubscribe
+         * and finally the app config so we can use the listeners database
+         * and websocket client to finalize these listeners.
+         */
+        constructor(id: number, operation: IAppOperation, config: IAppRefConfig);
+        /**
+         * @method unsubscribe
+         * @description This async method will resolve once the server
+         * successfully unsubscribes the client from the configured
+         * stream operation.
+         */
+        unsubscribe(): Promise<{}>;
+    }
+}
 declare module "core/method.reference" {
     import { ComponentReference } from "core/component.reference";
+    import { Unsubscribe } from "core/unsubscribe";
     /**
      * @class ModuleReference
      * @author Jonathan Casarrubias
@@ -158,7 +292,7 @@ declare module "core/method.reference" {
          * @description This method will register a stream, which will be populated as the server keeps
          * sending chunks of information.
          */
-        stream(listener: (stream: any) => void, filter?: any): number | undefined;
+        stream(listener: (stream: any) => void, filter?: any): Unsubscribe | undefined;
         private invalid(type);
         private endpoint();
     }
@@ -212,10 +346,12 @@ declare module "core/index" {
     export * from "core/module.reference";
     export * from "core/component.reference";
     export * from "core/method.reference";
+    export { ListenerCollection } from "core/listener.collection";
 }
 declare module "index" {
-    import { OnixClientConfig, IOperationListener, IClaims } from "interfaces/index";
+    import { OnixClientConfig, IClaims } from "interfaces/index";
     import { AppReference } from "core/app.reference";
+    import { ClientRegistration } from "core/client.registration";
     export * from "core/index";
     export * from "interfaces/index";
     /**
@@ -227,13 +363,13 @@ declare module "index" {
      */
     export class OnixClient {
         private config;
-        private index;
-        private _ws;
-        private _http;
-        private _storage;
-        private _schema;
-        private _references;
+        private ws;
+        private http;
+        private storage;
         private listeners;
+        private schema;
+        private references;
+        protected registration: ClientRegistration;
         /**
          * @constructor
          * @param config
@@ -249,6 +385,11 @@ declare module "index" {
          */
         init(): Promise<boolean>;
         /**
+         * @method
+         * @param resolve
+         */
+        private register(resolve, reject);
+        /**
          * @method disconnect
          * @description Disconnect from websocket server
          */
@@ -260,19 +401,6 @@ declare module "index" {
          * Only if the provided schema defines it does exist.
          */
         AppReference(name: string): Promise<AppReference | Error>;
-        /**
-         * @method addListener
-         * @param listener
-         * @description This method will register application operation listeners.
-         * TODO PRIVATIZE
-         */
-        addListener(listener: IOperationListener): number;
-        /**
-         * @method removeListener
-         * @param listener
-         * @description This method will unload application operation listeners
-         */
-        removeListener(id: number): boolean;
         /**
          * @description This getter will return a stored access token
          * from the local storage adapter.

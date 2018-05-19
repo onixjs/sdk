@@ -1,6 +1,6 @@
 {
   "name": "@onixjs/sdk",
-  "version": "1.0.0-alpha.14",
+  "version": "1.0.0-beta.1",
   "description": "RPC Client for OnixJS Applications.",
   "main": "dist/index.js",
   "scripts": {
@@ -27,7 +27,7 @@
   },
   "author": {
     "name": "Jonathan Casarrubias",
-    "email": "jcasarrubias@mean.expert",
+    "email": "jcasarrubias@onixjs.io",
     "url": "https://github.com/mean-expert-official"
   },
   "homepage": "https://github.com/onixjs/sdk#readme",
