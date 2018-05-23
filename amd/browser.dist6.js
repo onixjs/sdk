@@ -467,7 +467,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 this.ws = new this.config.adapters.websocket();
                 this.storage = new this.config.adapters.storage();
                 if (!this.config.prefix) {
-                    this.config.prefix = 'onixjs.sdk';
+                    this.config.prefix = 'onixjs:sdk';
                 }
             }
             else {
