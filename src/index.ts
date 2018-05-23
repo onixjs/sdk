@@ -6,13 +6,14 @@ import {
   ILocalStorage,
   IClaims,
   IAppOperation,
-  OperationType,
 } from './interfaces';
 import {AppReference} from './core/app.reference';
 import {Utils} from './utils';
 import {ListenerCollection} from './core/listener.collection';
 import {ClientRegistration} from './core/client.registration';
+import {OperationType} from './enums';
 export * from './core';
+export * from './enums';
 export * from './interfaces';
 /**
  * @class OnixClient

@@ -73,9 +73,44 @@ declare module "core/client.registration" {
         constructor(uuid: string);
     }
 }
+declare module "enums/index" {
+    /**
+     * @author Jonathan Casarrubias
+     * @enum OperationType
+     * @description Enum used for system level operations.
+     */
+    export const enum OperationType {
+        APP_CREATE = 0,
+        APP_CREATE_RESPONSE = 1,
+        APP_PING = 2,
+        APP_PING_RESPONSE = 3,
+        APP_START = 4,
+        APP_START_RESPONSE = 5,
+        APP_STOP = 6,
+        APP_STOP_RESPONSE = 7,
+        APP_DESTROY = 8,
+        APP_DESTROY_RESPONSE = 9,
+        APP_GREET = 10,
+        APP_GREET_RESPONSE = 11,
+        ONIX_REMOTE_CALL_STREAM = 12,
+        ONIX_REMOTE_CALL_PROCEDURE = 13,
+        ONIX_REMOTE_CALL_PROCEDURE_RESPONSE = 14,
+        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE = 15,
+        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE = 16,
+        ONIX_REMOTE_REGISTER_CLIENT = 17,
+        ONIX_REMOTE_REGISTER_CLIENT_RESPONSE = 18,
+        ONIX_REMOTE_UNREGISTER_CLIENT = 19,
+        ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE = 20,
+    }
+    export const enum RuntimeEnvironment {
+        BROWSER = 0,
+        NODE_JS = 1,
+    }
+}
 declare module "interfaces/index" {
     import { ListenerCollection } from "core/listener.collection";
     import { ClientRegistration } from "core/client.registration";
+    import { OperationType } from "enums/index";
     /**
      * @author Jonathan Casarrubias
      * @interface IAppOperation
@@ -116,38 +151,6 @@ declare module "interfaces/index" {
         token?: string;
         stream: boolean;
         subscription: string;
-    }
-    /**
-     * @author Jonathan Casarrubias
-     * @enum OperationType
-     * @description Enum used for system level operations.
-     */
-    export enum OperationType {
-        APP_CREATE = 0,
-        APP_CREATE_RESPONSE = 1,
-        APP_PING = 2,
-        APP_PING_RESPONSE = 3,
-        APP_START = 4,
-        APP_START_RESPONSE = 5,
-        APP_STOP = 6,
-        APP_STOP_RESPONSE = 7,
-        APP_DESTROY = 8,
-        APP_DESTROY_RESPONSE = 9,
-        APP_GREET = 10,
-        APP_GREET_RESPONSE = 11,
-        ONIX_REMOTE_CALL_STREAM = 12,
-        ONIX_REMOTE_CALL_PROCEDURE = 13,
-        ONIX_REMOTE_CALL_PROCEDURE_RESPONSE = 14,
-        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE = 15,
-        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE = 16,
-        ONIX_REMOTE_REGISTER_CLIENT = 17,
-        ONIX_REMOTE_REGISTER_CLIENT_RESPONSE = 18,
-        ONIX_REMOTE_UNREGISTER_CLIENT = 19,
-        ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE = 20,
-    }
-    export enum RuntimeEnvironment {
-        BROWSER = 0,
-        NODE_JS = 1,
     }
     export interface OnixClientConfig {
         host: string;
@@ -353,6 +356,7 @@ declare module "index" {
     import { AppReference } from "core/app.reference";
     import { ClientRegistration } from "core/client.registration";
     export * from "core/index";
+    export * from "enums/index";
     export * from "interfaces/index";
     /**
      * @class OnixClient

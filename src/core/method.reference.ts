@@ -1,5 +1,6 @@
 import {ComponentReference} from './component.reference';
-import {IAppOperation, OperationType, IRequest} from '../interfaces';
+import {OperationType} from '../enums';
+import {IAppOperation, IRequest} from '../interfaces';
 import {Utils} from '../utils';
 import {Unsubscribe} from './unsubscribe';
 /**

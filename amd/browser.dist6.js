@@ -120,44 +120,13 @@ define("core/client.registration", ["require", "exports"], function (require, ex
     }
     exports.ClientRegistration = ClientRegistration;
 });
+define("enums/index", ["require", "exports"], function (require, exports) {
+    'use strict';
+    Object.defineProperty(exports, "__esModule", { value: true });
+});
 define("interfaces/index", ["require", "exports"], function (require, exports) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    /**
-     * @author Jonathan Casarrubias
-     * @enum OperationType
-     * @description Enum used for system level operations.
-     */
-    var OperationType;
-    (function (OperationType) {
-        /*0*/ OperationType[OperationType["APP_CREATE"] = 0] = "APP_CREATE";
-        /*1*/ OperationType[OperationType["APP_CREATE_RESPONSE"] = 1] = "APP_CREATE_RESPONSE";
-        /*2*/ OperationType[OperationType["APP_PING"] = 2] = "APP_PING";
-        /*3*/ OperationType[OperationType["APP_PING_RESPONSE"] = 3] = "APP_PING_RESPONSE";
-        /*4*/ OperationType[OperationType["APP_START"] = 4] = "APP_START";
-        /*5*/ OperationType[OperationType["APP_START_RESPONSE"] = 5] = "APP_START_RESPONSE";
-        /*6*/ OperationType[OperationType["APP_STOP"] = 6] = "APP_STOP";
-        /*7*/ OperationType[OperationType["APP_STOP_RESPONSE"] = 7] = "APP_STOP_RESPONSE";
-        /*8*/ OperationType[OperationType["APP_DESTROY"] = 8] = "APP_DESTROY";
-        /*9*/ OperationType[OperationType["APP_DESTROY_RESPONSE"] = 9] = "APP_DESTROY_RESPONSE";
-        /*10*/ OperationType[OperationType["APP_GREET"] = 10] = "APP_GREET";
-        /*11*/ OperationType[OperationType["APP_GREET_RESPONSE"] = 11] = "APP_GREET_RESPONSE";
-        /*12*/ OperationType[OperationType["ONIX_REMOTE_CALL_STREAM"] = 12] = "ONIX_REMOTE_CALL_STREAM";
-        /*13*/ OperationType[OperationType["ONIX_REMOTE_CALL_PROCEDURE"] = 13] = "ONIX_REMOTE_CALL_PROCEDURE";
-        /*14*/ OperationType[OperationType["ONIX_REMOTE_CALL_PROCEDURE_RESPONSE"] = 14] = "ONIX_REMOTE_CALL_PROCEDURE_RESPONSE";
-        /*15*/ OperationType[OperationType["ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE"] = 15] = "ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE";
-        /*16*/ OperationType[OperationType["ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE"] = 16] = "ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE";
-        /*17*/ OperationType[OperationType["ONIX_REMOTE_REGISTER_CLIENT"] = 17] = "ONIX_REMOTE_REGISTER_CLIENT";
-        /*18*/ OperationType[OperationType["ONIX_REMOTE_REGISTER_CLIENT_RESPONSE"] = 18] = "ONIX_REMOTE_REGISTER_CLIENT_RESPONSE";
-        /*19*/ OperationType[OperationType["ONIX_REMOTE_UNREGISTER_CLIENT"] = 19] = "ONIX_REMOTE_UNREGISTER_CLIENT";
-        /*20*/ OperationType[OperationType["ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE"] = 20] = "ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE";
-    })(OperationType = exports.OperationType || (exports.OperationType = {}));
-    // Required because of different http modules
-    var RuntimeEnvironment;
-    (function (RuntimeEnvironment) {
-        /*0*/ RuntimeEnvironment[RuntimeEnvironment["BROWSER"] = 0] = "BROWSER";
-        /*1*/ RuntimeEnvironment[RuntimeEnvironment["NODE_JS"] = 1] = "NODE_JS";
-    })(RuntimeEnvironment = exports.RuntimeEnvironment || (exports.RuntimeEnvironment = {}));
     class ListenerCollectionList {
         constructor() {
             this.index = 0;
@@ -191,7 +160,7 @@ define("utils/index", ["require", "exports"], function (require, exports) {
         Utils.getRandomInt = getRandomInt;
     })(Utils = exports.Utils || (exports.Utils = {}));
 });
-define("core/unsubscribe", ["require", "exports", "index", "utils/index"], function (require, exports, __1, utils_1) {
+define("core/unsubscribe", ["require", "exports", "utils/index"], function (require, exports, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -230,7 +199,7 @@ define("core/unsubscribe", ["require", "exports", "index", "utils/index"], funct
                     // Create unsubscribe app operation
                     const operation = {
                         uuid: utils_1.Utils.uuid(),
-                        type: __1.OperationType.ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE,
+                        type: 15 /* ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE */,
                         message: {
                             rpc: 'unsubscribe',
                             request: {
@@ -247,7 +216,7 @@ define("core/unsubscribe", ["require", "exports", "index", "utils/index"], funct
                     const id = this.config.listeners.add((response) => {
                         if (response.uuid === operation.uuid &&
                             response.type ===
-                                __1.OperationType.ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE) {
+                                16 /* ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE */) {
                             // Remove unsubscribe listener
                             this.config.listeners.remove(id);
                             // Remove original stream listener
@@ -264,7 +233,7 @@ define("core/unsubscribe", ["require", "exports", "index", "utils/index"], funct
     }
     exports.Unsubscribe = Unsubscribe;
 });
-define("core/method.reference", ["require", "exports", "interfaces/index", "utils/index", "core/unsubscribe"], function (require, exports, interfaces_2, utils_2, unsubscribe_1) {
+define("core/method.reference", ["require", "exports", "utils/index", "core/unsubscribe"], function (require, exports, utils_2, unsubscribe_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -297,7 +266,7 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                     else {
                         const operation = {
                             uuid: utils_2.Utils.uuid(),
-                            type: interfaces_2.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                            type: 13 /* ONIX_REMOTE_CALL_PROCEDURE */,
                             message: {
                                 rpc: this.endpoint(),
                                 request: {
@@ -318,7 +287,7 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                         const listenerId = this.componentReference.moduleReference.appReference.config.listeners.add((response) => {
                             if (response.uuid === operation.uuid &&
                                 response.type ===
-                                    interfaces_2.OperationType.ONIX_REMOTE_CALL_PROCEDURE_RESPONSE) {
+                                    14 /* ONIX_REMOTE_CALL_PROCEDURE_RESPONSE */) {
                                 this.componentReference.moduleReference.appReference.config.listeners.remove(listenerId);
                                 resolve(response.message.request.payload);
                             }
@@ -344,7 +313,7 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
             else {
                 const operation = {
                     uuid: utils_2.Utils.uuid(),
-                    type: interfaces_2.OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+                    type: 13 /* ONIX_REMOTE_CALL_PROCEDURE */,
                     message: {
                         rpc: this.endpoint(),
                         request: {
@@ -367,7 +336,7 @@ define("core/method.reference", ["require", "exports", "interfaces/index", "util
                 // Chunks of information will be received in a future
                 const id = this.componentReference.moduleReference.appReference.config.listeners.add((response) => {
                     if (response.uuid === operation.uuid &&
-                        response.type === interfaces_2.OperationType.ONIX_REMOTE_CALL_STREAM) {
+                        response.type === 12 /* ONIX_REMOTE_CALL_STREAM */) {
                         listener(response.message.request.payload);
                     }
                 });
@@ -462,14 +431,15 @@ define("core/index", ["require", "exports", "core/app.reference", "core/module.r
     __export(method_reference_2);
     exports.ListenerCollection = listener_collection_1.ListenerCollection;
 });
-define("index", ["require", "exports", "interfaces/index", "core/app.reference", "utils/index", "core/listener.collection", "core/client.registration", "core/index", "interfaces/index"], function (require, exports, interfaces_3, app_reference_2, utils_3, listener_collection_2, client_registration_1, core_1, interfaces_4) {
+define("index", ["require", "exports", "core/app.reference", "utils/index", "core/listener.collection", "core/client.registration", "core/index", "enums/index", "interfaces/index"], function (require, exports, app_reference_2, utils_3, listener_collection_2, client_registration_1, core_1, enums_1, interfaces_2) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
     }
     Object.defineProperty(exports, "__esModule", { value: true });
     __export(core_1);
-    __export(interfaces_4);
+    __export(enums_1);
+    __export(interfaces_2);
     /**
      * @class OnixClient
      * @author Jonathan Casarrubias <gh: mean-expert-official>
@@ -534,7 +504,7 @@ define("index", ["require", "exports", "interfaces/index", "core/app.reference",
             // Register Client
             const operation = {
                 uuid,
-                type: interfaces_3.OperationType.ONIX_REMOTE_REGISTER_CLIENT,
+                type: 17 /* ONIX_REMOTE_REGISTER_CLIENT */,
                 message: {
                     rpc: 'register',
                     request: {
@@ -556,7 +526,7 @@ define("index", ["require", "exports", "interfaces/index", "core/app.reference",
                 // Verify we got the result, which will provide the registration
                 // Later might be used on handled disconnections.
                 if (response.uuid === operation.uuid &&
-                    response.type === interfaces_3.OperationType.ONIX_REMOTE_REGISTER_CLIENT_RESPONSE) {
+                    response.type === 18 /* ONIX_REMOTE_REGISTER_CLIENT_RESPONSE */) {
                     if (response.message.request.payload.code &&
                         response.message.request.payload.message) {
                         reject(response.message.request.payload);
