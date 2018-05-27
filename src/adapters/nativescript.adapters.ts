@@ -43,6 +43,9 @@ export namespace Nativescript {
     close() {
       this.connection.close();
     }
+    removeAllListeners(): void {
+      this.connection.removeAllListeners();
+    }
   }
   /**
    * @class HTTP

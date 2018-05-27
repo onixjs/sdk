@@ -50,6 +50,9 @@ export namespace Browser {
     close() {
       this.connection.close();
     }
+    removeAllListeners(): void {
+      this.connection.removeAllListeners();
+    }
   }
   /**
    * @class HTTP

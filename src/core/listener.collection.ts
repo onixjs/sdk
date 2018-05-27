@@ -87,4 +87,27 @@ export class ListenerCollection {
       this.listeners[this.ns].collection[index](data),
     );
   }
+  /**
+   * @method forEach
+   * @param handler
+   * @description will iterate over a collection list of listeners
+   * depending on the current namespace and propagate the received data.
+   */
+  forEach(handler): void {
+    Object.keys(this.listeners[this.ns].collection).forEach(index =>
+      handler(this.listeners[this.ns].collection[index]),
+    );
+  }
+  /**
+   * @method removeAllListeners
+   * @description This method will remove any listener from every
+   * collection from any namespace.
+   */
+  removeAllListeners() {
+    this.namespaces().forEach(namespace => {
+      Object.keys(this.listeners[name].collection).forEach(key => {
+        this.remove(key);
+      });
+    });
+  }
 }

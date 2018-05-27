@@ -59,11 +59,30 @@ export class OnixClient {
    * in order to correctly configure each Application Reference.
    */
   public async init(): Promise<boolean> {
-    return new Promise<any>(async (resolve, reject) => {
-      // Get OnixJS Schema
-      this.schema = await this.http.get(
-        `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
-      );
+    // Get OnixJS Schema
+    this.schema = await this.http.get(
+      `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
+    );
+    // Connect
+    return this.connect();
+  }
+  /**
+   * @method onDisconnect
+   * @param handler
+   * @description This method must be used to handle disconnections.
+   * Any reference must be destroyed and re-created when the client
+   * is connected again.
+   */
+  public onDisconnect(handler) {
+    this.listeners.namespace('disconnect').add(handler);
+  }
+  /**
+   * @method connect
+   * @description This method will be internally used to handle ws connection
+   * on init or under unexpected disconnections.
+   */
+  private async connect() {
+    return new Promise<boolean>((resolve, reject) => {
       // URL
       const url: string = `${
         this.config.port === 443 ? 'wss' : 'ws'
@@ -80,7 +99,67 @@ export class OnixClient {
       );
       // When connection is open then register and resolve
       this.ws.open(() => this.register(resolve, reject));
+      // Handle error disconnections
+      this.ws.on('error', (e: any) => {
+        switch (e.code) {
+          case 1000: // CLOSE_NORMAL
+            console.log('WebSocket: closed');
+            break;
+          default:
+            // Abnormal closure
+            this.reconnect(e);
+            break;
+        }
+        this.onclose(e);
+      });
+      // Handle close disconnections
+      this.ws.on('close', (e: any) => {
+        switch (e.code) {
+          case 'ECONNREFUSED':
+            this.reconnect(e);
+            break;
+          default:
+            this.onerror(e);
+            break;
+        }
+      });
     });
+  }
+  /**
+   * @method reconnect
+   * @param e
+   * @description This method will handle reconnections. It can only be
+   * internally called, but it will execute onDisconnect  listeners passing
+   * the received error.
+   */
+  private reconnect(e) {
+    // Remove any websocket listener
+    this.ws.removeAllListeners();
+    // Wait some time before notifying the
+    // disconnection.
+    setTimeout(() => {
+      // Will notify the disconnect listeners
+      // the client implementing the SDK should
+      // Call the init method again
+      this.listeners.namespace('disconnect').forEach(listener => listener(e));
+      this.listeners.removeAllListeners();
+    }, this.config.reconnectInterval || 1000);
+  }
+  /**
+   * @method onerror
+   * @param e
+   * @description This method will log errored disconnections
+   */
+  private onerror(e) {
+    console.log('WebSocketClient: error', arguments);
+  }
+  /**
+   * @method onclose
+   * @param e
+   * @description This method will log close disconnections
+   */
+  private onclose(e) {
+    console.log('WebSocketClient: closed', arguments);
   }
   /**
    * @method

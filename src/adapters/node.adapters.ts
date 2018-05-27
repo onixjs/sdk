@@ -41,6 +41,9 @@ export namespace NodeJS {
     close() {
       this.connection.close();
     }
+    removeAllListeners(): void {
+      this.connection.removeAllListeners();
+    }
   }
   /**
    * @class HTTP

@@ -47,6 +47,7 @@ export interface OnixClientConfig {
   port: number;
   adapters: IAdapters;
   prefix?: string;
+  reconnectInterval?: number;
 }
 export interface IAdapters {
   http: new () => IHTTP;
@@ -62,6 +63,7 @@ export interface IWS {
   send(something: string | object): void;
   open(callback: () => void): void;
   close(): void;
+  removeAllListeners(): void;
 }
 export interface ILocalStorage {
   setItem(key: string, value: string): void;
