@@ -32,6 +32,9 @@ export namespace Browser {
             );
           };
           break;
+        case 'error':
+          this.connection.onerror = callback;
+          break;
         case 'close':
           this.connection.onclose = callback;
           break;
