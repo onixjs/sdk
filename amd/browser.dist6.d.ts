@@ -170,7 +170,14 @@ declare module "interfaces/index" {
         port: number;
         adapters: IAdapters;
         prefix?: string;
-        reconnectInterval?: number;
+        intervals?: {
+            ping?: number;
+            reconnect?: number;
+            timeout?: number;
+        };
+        tries?: {
+            ping?: number;
+        };
     }
     export interface IAdapters {
         http: new () => IHTTP;
@@ -181,6 +188,7 @@ declare module "interfaces/index" {
         get(url: string): Promise<object>;
     }
     export interface IWS {
+        client: any;
         connect(url: string): void;
         on(event: string, callback: (data: MessageEvent | string) => void): void;
         send(something: string | object): void;
@@ -216,7 +224,7 @@ declare module "interfaces/index" {
             };
         };
         listeners: ListenerCollection;
-        registration: ClientRegistration;
+        registration: () => ClientRegistration;
     }
     /**
      * @interface ICall
@@ -373,6 +381,7 @@ declare module "index" {
     export * from "core/index";
     export * from "enums/index";
     export * from "interfaces/index";
+    export const namespace = "onixjs:sdk";
     /**
      * @class OnixClient
      * @author Jonathan Casarrubias <gh: mean-expert-official>
@@ -418,13 +427,13 @@ declare module "index" {
          */
         private connect();
         /**
-         * @method reconnect
+         * @method disconnected
          * @param e
-         * @description This method will handle reconnections. It can only be
-         * internally called, but it will execute onDisconnect  listeners passing
-         * the received error.
+         * @description This method will notify disconnections. When notifying
+         * the subscribers, they must dispose subscriptions and run the sdk
+         * initialization again.
          */
-        private reconnect(e);
+        private disconnected(e);
         /**
          * @method onerror
          * @param e
@@ -443,6 +452,10 @@ declare module "index" {
          */
         private register(resolve, reject);
         /**
+         * @method ping
+         */
+        private ping(id);
+        /**
          * @method disconnect
          * @description Disconnect from websocket server
          */
@@ -453,7 +466,7 @@ declare module "index" {
          * @description This method will construct an application reference.
          * Only if the provided schema defines it does exist.
          */
-        AppReference(name: string): Promise<AppReference | Error>;
+        AppReference(name: string): Promise<AppReference>;
         /**
          * @description This getter will return a stored access token
          * from the local storage adapter.
@@ -471,6 +484,7 @@ declare module "index" {
          * defined within the OIDC Client.
          */
         claims(): Promise<IClaims>;
+        waitForConnection(callback: any, interval?: number): void;
         /**
          * @method logout
          * @description this method will clear the local storage, therefore
@@ -496,7 +510,7 @@ declare module "adapters/browser.adapters" {
          * Browser Environment.
          */
         class WebSocket implements IWS {
-            private connection;
+            client: any;
             connect(url: string): void;
             on(name: string, callback: any): void;
             send(something: string): void;
@@ -543,7 +557,7 @@ declare module "adapters/nativescript.adapters" {
          * Nativescript Environment.
          */
         class WebSocket implements IWS {
-            private connection;
+            client: any;
             connect(url: string): void;
             on(name: string, callback: any): void;
             send(something: string): void;
@@ -591,7 +605,7 @@ declare module "adapters/node.adapters" {
          * NodeJS Environment.
          */
         class WebSocket implements IWS {
-            private connection;
+            client: any;
             connect(url: string): void;
             on(name: string, callback: any): void;
             send(something: string): void;

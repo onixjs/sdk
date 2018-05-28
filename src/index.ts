@@ -15,6 +15,7 @@ import {OperationType} from './enums';
 export * from './core';
 export * from './enums';
 export * from './interfaces';
+export const namespace = 'onixjs:sdk';
 /**
  * @class OnixClient
  * @author Jonathan Casarrubias <gh: mean-expert-official>
@@ -46,8 +47,29 @@ export class OnixClient {
       this.http = new this.config.adapters.http();
       this.ws = new this.config.adapters.websocket();
       this.storage = new this.config.adapters.storage();
+      // Set some default configs
       if (!this.config.prefix) {
-        this.config.prefix = 'onixjs:sdk';
+        this.config.prefix = namespace;
+      }
+      if (!this.config.intervals) {
+        this.config.intervals = {};
+      }
+      if (!this.config.intervals.ping) {
+        this.config.intervals.ping = 10000;
+      }
+      if (!this.config.intervals.timeout) {
+        this.config.intervals.timeout = 3000;
+      }
+      if (!this.config.intervals.reconnect) {
+        this.config.intervals.timeout = 1000;
+      }
+      if (!this.config.tries) {
+        this.config.tries = {};
+      }
+      if (!this.config.tries) {
+        this.config.tries = {
+          ping: 5,
+        };
       }
     } else {
       console.log('ONIXJS SDK: Unable to find suitable adapters.');
@@ -59,12 +81,18 @@ export class OnixClient {
    * in order to correctly configure each Application Reference.
    */
   public async init(): Promise<boolean> {
-    // Get OnixJS Schema
-    this.schema = await this.http.get(
-      `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
-    );
-    // Connect
-    return this.connect();
+    try {
+      // Get OnixJS Schema
+      this.schema = await this.http.get(
+        `${this.config.host}:${this.config.port}/.well-known/onixjs-schema`,
+      );
+      // Connect
+      return this.connect();
+    } catch (e) {
+      throw new Error(
+        `${namespace} Unable to get host schema, verify internet connection and/or sdk host:port configs.`,
+      );
+    }
   }
   /**
    * @method onDisconnect
@@ -74,7 +102,9 @@ export class OnixClient {
    * is connected again.
    */
   public onDisconnect(handler) {
-    this.listeners.namespace('disconnect').add(handler);
+    this.listeners.namespace('disconnect').add(e => {
+      handler(4);
+    });
   }
   /**
    * @method connect
@@ -98,25 +128,36 @@ export class OnixClient {
         ),
       );
       // When connection is open then register and resolve
-      this.ws.open(() => this.register(resolve, reject));
+      this.ws.open(() =>
+        // Wait until the connection is valid
+        this.waitForConnection(() => {
+          // Set a ping interval process
+          const id = setInterval(
+            () => this.ping(id),
+            this.config.intervals!.ping!,
+          );
+          // Register current connection
+          this.register(resolve, reject);
+        }),
+      );
       // Handle error disconnections
-      this.ws.on('error', (e: any) => {
+      this.ws.on('close', (e: any) => {
         switch (e.code) {
           case 1000: // CLOSE_NORMAL
             console.log('WebSocket: closed');
             break;
           default:
             // Abnormal closure
-            this.reconnect(e);
+            this.disconnected(e);
+            this.onclose(e);
             break;
         }
-        this.onclose(e);
       });
       // Handle close disconnections
-      this.ws.on('close', (e: any) => {
+      this.ws.on('error', (e: any) => {
         switch (e.code) {
           case 'ECONNREFUSED':
-            this.reconnect(e);
+            this.disconnected(e);
             break;
           default:
             this.onerror(e);
@@ -126,13 +167,13 @@ export class OnixClient {
     });
   }
   /**
-   * @method reconnect
+   * @method disconnected
    * @param e
-   * @description This method will handle reconnections. It can only be
-   * internally called, but it will execute onDisconnect  listeners passing
-   * the received error.
+   * @description This method will notify disconnections. When notifying
+   * the subscribers, they must dispose subscriptions and run the sdk
+   * initialization again.
    */
-  private reconnect(e) {
+  private disconnected(e) {
     // Remove any websocket listener
     this.ws.removeAllListeners();
     // Wait some time before notifying the
@@ -141,9 +182,10 @@ export class OnixClient {
       // Will notify the disconnect listeners
       // the client implementing the SDK should
       // Call the init method again
-      this.listeners.namespace('disconnect').forEach(listener => listener(e));
+      this.listeners.namespace('disconnect').broadcast(e);
       this.listeners.removeAllListeners();
-    }, this.config.reconnectInterval || 1000);
+      this.references = {};
+    }, this.config.intervals!.reconnect!);
   }
   /**
    * @method onerror
@@ -211,6 +253,36 @@ export class OnixClient {
     this.ws.send(JSON.stringify(operation));
   }
   /**
+   * @method ping
+   */
+  private ping(id) {
+    const ts: string = Math.round(new Date().getTime() / 1000).toString();
+    let to: number = 0;
+    // set timeout interval
+    const interval = setInterval(() => {
+      if (to >= this.config.tries!.ping!) {
+        console.log('disconnecting, no ping returned');
+        this.disconnect();
+        clearInterval(id);
+        clearInterval(interval);
+      }
+      to += 1;
+    }, this.config.intervals!.timeout);
+
+    const index: number = this.listeners
+      .namespace('ping')
+      .add((data: IAppOperation | string) => {
+        if (typeof data === 'string' && data.includes(ts)) {
+          to = 0;
+          this.listeners.namespace('ping').remove(index);
+          clearInterval(interval);
+        }
+      });
+    console.log('SENDING PING: ', ts);
+    // Send timestamp
+    this.ws.send(ts);
+  }
+  /**
    * @method disconnect
    * @description Disconnect from websocket server
    */
@@ -223,11 +295,11 @@ export class OnixClient {
    * @description This method will construct an application reference.
    * Only if the provided schema defines it does exist.
    */
-  public async AppReference(name: string): Promise<AppReference | Error> {
+  public async AppReference(name: string): Promise<AppReference> {
     // Verify that the application actually exists on server
     if (!this.schema[name]) {
-      return new Error(
-        `ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`,
+      throw new Error(
+        `${namespace} Application with ${name} doesn't exist on the OnixJS Server Environment.`,
       );
     }
     // If the reference still doesn't exist, then create one
@@ -241,7 +313,7 @@ export class OnixClient {
             token: this.token,
             claims: await this.claims(),
             listeners: this.listeners,
-            registration: this.registration,
+            registration: () => this.registration,
           },
           this.schema[name],
         ),
@@ -296,6 +368,17 @@ export class OnixClient {
     } else {
       // This guy is not even logged, return an anonymous claim
       return {sub: '$anonymous'};
+    }
+  }
+
+  waitForConnection(callback, interval = 1000) {
+    if (this.ws.client.readyState === 1) {
+      callback();
+    } else {
+      // optional: implement backoff for interval here
+      setTimeout(() => {
+        this.waitForConnection(callback, interval);
+      }, interval);
     }
   }
   /**

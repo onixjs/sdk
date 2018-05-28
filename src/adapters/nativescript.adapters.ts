@@ -17,14 +17,14 @@ export namespace Nativescript {
    * Nativescript Environment.
    */
   export class WebSocket implements IWS {
-    private connection;
+    public client;
     connect(url: string) {
-      this.connection = new WS(url, []);
+      this.client = new WS(url, []);
     }
     on(name: string, callback) {
       switch (name) {
         case 'message':
-          this.connection.addEventListener(name, evt => {
+          this.client.addEventListener(name, evt => {
             callback(evt.data);
           });
           break;
@@ -35,16 +35,16 @@ export namespace Nativescript {
       }
     }
     send(something: string) {
-      this.connection.send(something);
+      this.client.send(something);
     }
     open(callback) {
-      this.connection.addEventListener('open', callback);
+      this.client.addEventListener('open', callback);
     }
     close() {
-      this.connection.close();
+      this.client.close();
     }
     removeAllListeners(): void {
-      this.connection.removeAllListeners();
+      this.client.removeAllListeners();
     }
   }
   /**

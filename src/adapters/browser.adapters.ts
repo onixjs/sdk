@@ -17,14 +17,14 @@ export namespace Browser {
    * Browser Environment.
    */
   export class WebSocket implements IWS {
-    private connection;
+    public client;
     connect(url: string) {
-      this.connection = new WS(url);
+      this.client = new WS(url);
     }
     on(name: string, callback) {
       switch (name) {
         case 'message':
-          this.connection.onmessage = event => {
+          this.client.onmessage = event => {
             callback(
               Utils.IsJsonString(event.data)
                 ? JSON.parse(event.data)
@@ -33,10 +33,10 @@ export namespace Browser {
           };
           break;
         case 'error':
-          this.connection.onerror = callback;
+          this.client.onerror = callback;
           break;
         case 'close':
-          this.connection.onclose = callback;
+          this.client.onclose = callback;
           break;
         default:
           throw new Error(
@@ -45,16 +45,16 @@ export namespace Browser {
       }
     }
     send(something: string) {
-      this.connection.send(something);
+      this.client.send(something);
     }
     open(callback) {
-      this.connection.onopen = callback;
+      this.client.onopen = callback;
     }
     close() {
-      this.connection.close();
+      this.client.close();
     }
     removeAllListeners(): void {
-      this.connection.removeAllListeners();
+      this.client.removeAllListeners();
     }
   }
   /**
@@ -69,7 +69,14 @@ export namespace Browser {
         const request = new XMLHttpRequest();
         request.onreadystatechange = function() {
           if (request.readyState === 4) {
-            resolve(JSON.parse(request.responseText));
+            const response = Utils.IsJsonString(request.responseText)
+              ? JSON.parse(request.responseText)
+              : request.responseText;
+            if (request.status === 200) {
+              resolve(response);
+            } else {
+              reject(response);
+            }
           }
         };
         request.open('GET', url, true);

@@ -73,8 +73,9 @@ export class ListenerCollection {
    * current namespace.
    */
   remove(index): void {
-    if (this.listeners[this.ns].collection[index])
+    if (this.listeners[this.ns].collection[index]) {
       delete this.listeners[this.ns].collection[index];
+    }
   }
   /**
    * @method broadcast
@@ -94,9 +95,10 @@ export class ListenerCollection {
    * depending on the current namespace and propagate the received data.
    */
   forEach(handler): void {
-    Object.keys(this.listeners[this.ns].collection).forEach(index =>
-      handler(this.listeners[this.ns].collection[index]),
-    );
+    if (this.listeners[this.ns].collection)
+      Object.keys(this.listeners[this.ns].collection).forEach(index =>
+        handler(this.listeners[this.ns].collection[index]),
+      );
   }
   /**
    * @method removeAllListeners
@@ -105,8 +107,8 @@ export class ListenerCollection {
    */
   removeAllListeners() {
     this.namespaces().forEach(namespace => {
-      Object.keys(this.listeners[name].collection).forEach(key => {
-        this.remove(key);
+      Object.keys(this.listeners[namespace].collection).forEach(key => {
+        this.namespace(namespace).remove(key);
       });
     });
   }

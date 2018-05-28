@@ -19,30 +19,30 @@ export namespace NodeJS {
    * NodeJS Environment.
    */
   export class WebSocket implements IWS {
-    private connection;
+    public client;
     connect(url: string) {
-      this.connection = new WS(url);
+      this.client = new WS(url);
     }
     on(name: string, callback) {
       switch (name) {
         case 'close':
-          this.connection.onclose = callback;
+          this.client.onclose = callback;
           break;
         default:
-          this.connection.on(name, callback);
+          this.client.on(name, callback);
       }
     }
     send(something: string) {
-      this.connection.send(something);
+      this.client.send(something);
     }
     open(callback) {
-      this.connection.on('open', callback);
+      this.client.on('open', callback);
     }
     close() {
-      this.connection.close();
+      this.client.close();
     }
     removeAllListeners(): void {
-      this.connection.removeAllListeners();
+      this.client.removeAllListeners();
     }
   }
   /**

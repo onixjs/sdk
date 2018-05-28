@@ -46,8 +46,8 @@ export class MethodReference {
                   .config.claims.sub,
                 token: this.componentReference.moduleReference.appReference
                   .config.token,
-                subscription: this.componentReference.moduleReference
-                  .appReference.config.registration.uuid,
+                subscription: this.componentReference.moduleReference.appReference.config.registration()
+                  .uuid,
               },
               payload,
             },
@@ -103,8 +103,8 @@ export class MethodReference {
                 .config.claims.sub,
               token: this.componentReference.moduleReference.appReference.config
                 .token,
-              subscription: this.componentReference.moduleReference.appReference
-                .config.registration.uuid,
+              subscription: this.componentReference.moduleReference.appReference.config.registration()
+                .uuid,
             },
             payload: undefined,
           },

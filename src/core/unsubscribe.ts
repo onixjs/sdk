@@ -41,7 +41,7 @@ export class Unsubscribe {
           request: {
             metadata: {
               stream: false,
-              subscription: this.config.registration.uuid,
+              subscription: this.config.registration().uuid,
             },
             payload: this.operation,
           },

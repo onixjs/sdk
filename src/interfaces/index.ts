@@ -47,7 +47,14 @@ export interface OnixClientConfig {
   port: number;
   adapters: IAdapters;
   prefix?: string;
-  reconnectInterval?: number;
+  intervals?: {
+    ping?: number;
+    reconnect?: number;
+    timeout?: number;
+  };
+  tries?: {
+    ping?: number;
+  };
 }
 export interface IAdapters {
   http: new () => IHTTP;
@@ -58,6 +65,7 @@ export interface IHTTP {
   get(url: string): Promise<object>;
 }
 export interface IWS {
+  client;
   connect(url: string): void;
   on(event: string, callback: (data: MessageEvent | string) => void): void;
   send(something: string | object): void;
@@ -93,7 +101,7 @@ export interface IAppRefConfig {
     };
   };
   listeners: ListenerCollection;
-  registration: ClientRegistration;
+  registration: () => ClientRegistration;
 }
 /**
  * @interface ICall

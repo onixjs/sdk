@@ -95,8 +95,9 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          * current namespace.
          */
         remove(index) {
-            if (this.listeners[this.ns].collection[index])
+            if (this.listeners[this.ns].collection[index]) {
                 delete this.listeners[this.ns].collection[index];
+            }
         }
         /**
          * @method broadcast
@@ -114,7 +115,8 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          * depending on the current namespace and propagate the received data.
          */
         forEach(handler) {
-            Object.keys(this.listeners[this.ns].collection).forEach(index => handler(this.listeners[this.ns].collection[index]));
+            if (this.listeners[this.ns].collection)
+                Object.keys(this.listeners[this.ns].collection).forEach(index => handler(this.listeners[this.ns].collection[index]));
         }
         /**
          * @method removeAllListeners
@@ -123,8 +125,8 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          */
         removeAllListeners() {
             this.namespaces().forEach(namespace => {
-                Object.keys(this.listeners[name].collection).forEach(key => {
-                    this.remove(key);
+                Object.keys(this.listeners[namespace].collection).forEach(key => {
+                    this.namespace(namespace).remove(key);
                 });
             });
         }
@@ -226,7 +228,7 @@ define("core/unsubscribe", ["require", "exports", "utils/index"], function (requ
                             request: {
                                 metadata: {
                                     stream: false,
-                                    subscription: this.config.registration.uuid,
+                                    subscription: this.config.registration().uuid,
                                 },
                                 payload: this.operation,
                             },
@@ -298,8 +300,8 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/unsu
                                             .config.claims.sub,
                                         token: this.componentReference.moduleReference.appReference
                                             .config.token,
-                                        subscription: this.componentReference.moduleReference
-                                            .appReference.config.registration.uuid,
+                                        subscription: this.componentReference.moduleReference.appReference.config.registration()
+                                            .uuid,
                                     },
                                     payload,
                                 },
@@ -345,8 +347,8 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/unsu
                                     .config.claims.sub,
                                 token: this.componentReference.moduleReference.appReference.config
                                     .token,
-                                subscription: this.componentReference.moduleReference.appReference
-                                    .config.registration.uuid,
+                                subscription: this.componentReference.moduleReference.appReference.config.registration()
+                                    .uuid,
                             },
                             payload: undefined,
                         },
@@ -461,6 +463,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
     __export(core_1);
     __export(enums_1);
     __export(interfaces_2);
+    exports.namespace = 'onixjs:sdk';
     /**
      * @class OnixClient
      * @author Jonathan Casarrubias <gh: mean-expert-official>
@@ -487,8 +490,29 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 this.http = new this.config.adapters.http();
                 this.ws = new this.config.adapters.websocket();
                 this.storage = new this.config.adapters.storage();
+                // Set some default configs
                 if (!this.config.prefix) {
-                    this.config.prefix = 'onixjs:sdk';
+                    this.config.prefix = exports.namespace;
+                }
+                if (!this.config.intervals) {
+                    this.config.intervals = {};
+                }
+                if (!this.config.intervals.ping) {
+                    this.config.intervals.ping = 10000;
+                }
+                if (!this.config.intervals.timeout) {
+                    this.config.intervals.timeout = 3000;
+                }
+                if (!this.config.intervals.reconnect) {
+                    this.config.intervals.timeout = 1000;
+                }
+                if (!this.config.tries) {
+                    this.config.tries = {};
+                }
+                if (!this.config.tries) {
+                    this.config.tries = {
+                        ping: 5,
+                    };
                 }
             }
             else {
@@ -502,10 +526,15 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          */
         init() {
             return __awaiter(this, void 0, void 0, function* () {
-                // Get OnixJS Schema
-                this.schema = yield this.http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
-                // Connect
-                return this.connect();
+                try {
+                    // Get OnixJS Schema
+                    this.schema = yield this.http.get(`${this.config.host}:${this.config.port}/.well-known/onixjs-schema`);
+                    // Connect
+                    return this.connect();
+                }
+                catch (e) {
+                    throw new Error(`${exports.namespace} Unable to get host schema, verify internet connection and/or sdk host:port configs.`);
+                }
             });
         }
         /**
@@ -516,7 +545,9 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          * is connected again.
          */
         onDisconnect(handler) {
-            this.listeners.namespace('disconnect').add(handler);
+            this.listeners.namespace('disconnect').add(e => {
+                handler(4);
+            });
         }
         /**
          * @method connect
@@ -533,25 +564,32 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                     // Register Single WS Listener
                     this.ws.on('message', (data) => this.listeners.broadcast(utils_3.Utils.IsJsonString(data) ? JSON.parse(data) : data));
                     // When connection is open then register and resolve
-                    this.ws.open(() => this.register(resolve, reject));
+                    this.ws.open(() => 
+                    // Wait until the connection is valid
+                    this.waitForConnection(() => {
+                        // Set a ping interval process
+                        const id = setInterval(() => this.ping(id), this.config.intervals.ping);
+                        // Register current connection
+                        this.register(resolve, reject);
+                    }));
                     // Handle error disconnections
-                    this.ws.on('error', (e) => {
+                    this.ws.on('close', (e) => {
                         switch (e.code) {
                             case 1000: // CLOSE_NORMAL
                                 console.log('WebSocket: closed');
                                 break;
                             default:
                                 // Abnormal closure
-                                this.reconnect(e);
+                                this.disconnected(e);
+                                this.onclose(e);
                                 break;
                         }
-                        this.onclose(e);
                     });
                     // Handle close disconnections
-                    this.ws.on('close', (e) => {
+                    this.ws.on('error', (e) => {
                         switch (e.code) {
                             case 'ECONNREFUSED':
-                                this.reconnect(e);
+                                this.disconnected(e);
                                 break;
                             default:
                                 this.onerror(e);
@@ -562,13 +600,13 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             });
         }
         /**
-         * @method reconnect
+         * @method disconnected
          * @param e
-         * @description This method will handle reconnections. It can only be
-         * internally called, but it will execute onDisconnect  listeners passing
-         * the received error.
+         * @description This method will notify disconnections. When notifying
+         * the subscribers, they must dispose subscriptions and run the sdk
+         * initialization again.
          */
-        reconnect(e) {
+        disconnected(e) {
             // Remove any websocket listener
             this.ws.removeAllListeners();
             // Wait some time before notifying the
@@ -577,9 +615,10 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 // Will notify the disconnect listeners
                 // the client implementing the SDK should
                 // Call the init method again
-                this.listeners.namespace('disconnect').forEach(listener => listener(e));
+                this.listeners.namespace('disconnect').broadcast(e);
                 this.listeners.removeAllListeners();
-            }, this.config.reconnectInterval || 1000);
+                this.references = {};
+            }, this.config.intervals.reconnect);
         }
         /**
          * @method onerror
@@ -644,6 +683,35 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             this.ws.send(JSON.stringify(operation));
         }
         /**
+         * @method ping
+         */
+        ping(id) {
+            const ts = Math.round(new Date().getTime() / 1000).toString();
+            let to = 0;
+            // set timeout interval
+            const interval = setInterval(() => {
+                if (to >= this.config.tries.ping) {
+                    console.log('disconnecting, no ping returned');
+                    this.disconnect();
+                    clearInterval(id);
+                    clearInterval(interval);
+                }
+                to += 1;
+            }, this.config.intervals.timeout);
+            const index = this.listeners
+                .namespace('ping')
+                .add((data) => {
+                if (typeof data === 'string' && data.includes(ts)) {
+                    to = 0;
+                    this.listeners.namespace('ping').remove(index);
+                    clearInterval(interval);
+                }
+            });
+            console.log('SENDING PING: ', ts);
+            // Send timestamp
+            this.ws.send(ts);
+        }
+        /**
          * @method disconnect
          * @description Disconnect from websocket server
          */
@@ -660,7 +728,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             return __awaiter(this, void 0, void 0, function* () {
                 // Verify that the application actually exists on server
                 if (!this.schema[name]) {
-                    return new Error(`ONIX Client: Application with ${name} doesn't exist on the OnixJS Server Environment.`);
+                    throw new Error(`${exports.namespace} Application with ${name} doesn't exist on the OnixJS Server Environment.`);
                 }
                 // If the reference still doesn't exist, then create one
                 if (!this.references[name]) {
@@ -671,7 +739,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                         token: this.token,
                         claims: yield this.claims(),
                         listeners: this.listeners,
-                        registration: this.registration,
+                        registration: () => this.registration,
                     }, this.schema[name]));
                 }
                 // Otherwise return a singleton instance of the reference
@@ -722,6 +790,17 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 }
             });
         }
+        waitForConnection(callback, interval = 1000) {
+            if (this.ws.client.readyState === 1) {
+                callback();
+            }
+            else {
+                // optional: implement backoff for interval here
+                setTimeout(() => {
+                    this.waitForConnection(callback, interval);
+                }, interval);
+            }
+        }
         /**
          * @method logout
          * @description this method will clear the local storage, therefore
@@ -754,38 +833,38 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
          */
         class WebSocket {
             connect(url) {
-                this.connection = new WS(url);
+                this.client = new WS(url);
             }
             on(name, callback) {
                 switch (name) {
                     case 'message':
-                        this.connection.onmessage = event => {
+                        this.client.onmessage = event => {
                             callback(utils_4.Utils.IsJsonString(event.data)
                                 ? JSON.parse(event.data)
                                 : event.data);
                         };
                         break;
                     case 'error':
-                        this.connection.onerror = callback;
+                        this.client.onerror = callback;
                         break;
                     case 'close':
-                        this.connection.onclose = callback;
+                        this.client.onclose = callback;
                         break;
                     default:
                         throw new Error(`ONIX Client: WebSocket event ${name} is not implemented.`);
                 }
             }
             send(something) {
-                this.connection.send(something);
+                this.client.send(something);
             }
             open(callback) {
-                this.connection.onopen = callback;
+                this.client.onopen = callback;
             }
             close() {
-                this.connection.close();
+                this.client.close();
             }
             removeAllListeners() {
-                this.connection.removeAllListeners();
+                this.client.removeAllListeners();
             }
         }
         Browser.WebSocket = WebSocket;
@@ -802,7 +881,15 @@ define("adapters/browser.adapters", ["require", "exports", "utils/index"], funct
                         const request = new XMLHttpRequest();
                         request.onreadystatechange = function () {
                             if (request.readyState === 4) {
-                                resolve(JSON.parse(request.responseText));
+                                const response = utils_4.Utils.IsJsonString(request.responseText)
+                                    ? JSON.parse(request.responseText)
+                                    : request.responseText;
+                                if (request.status === 200) {
+                                    resolve(response);
+                                }
+                                else {
+                                    reject(response);
+                                }
                             }
                         };
                         request.open('GET', url, true);
@@ -858,12 +945,12 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
          */
         class WebSocket {
             connect(url) {
-                this.connection = new WS(url, []);
+                this.client = new WS(url, []);
             }
             on(name, callback) {
                 switch (name) {
                     case 'message':
-                        this.connection.addEventListener(name, evt => {
+                        this.client.addEventListener(name, evt => {
                             callback(evt.data);
                         });
                         break;
@@ -872,16 +959,16 @@ define("adapters/nativescript.adapters", ["require", "exports"], function (requi
                 }
             }
             send(something) {
-                this.connection.send(something);
+                this.client.send(something);
             }
             open(callback) {
-                this.connection.addEventListener('open', callback);
+                this.client.addEventListener('open', callback);
             }
             close() {
-                this.connection.close();
+                this.client.close();
             }
             removeAllListeners() {
-                this.connection.removeAllListeners();
+                this.client.removeAllListeners();
             }
         }
         Nativescript.WebSocket = WebSocket;
@@ -946,28 +1033,28 @@ define("adapters/node.adapters", ["require", "exports", "ws", "http", "https", "
          */
         class WebSocket {
             connect(url) {
-                this.connection = new WS(url);
+                this.client = new WS(url);
             }
             on(name, callback) {
                 switch (name) {
                     case 'close':
-                        this.connection.onclose = callback;
+                        this.client.onclose = callback;
                         break;
                     default:
-                        this.connection.on(name, callback);
+                        this.client.on(name, callback);
                 }
             }
             send(something) {
-                this.connection.send(something);
+                this.client.send(something);
             }
             open(callback) {
-                this.connection.on('open', callback);
+                this.client.on('open', callback);
             }
             close() {
-                this.connection.close();
+                this.client.close();
             }
             removeAllListeners() {
-                this.connection.removeAllListeners();
+                this.client.removeAllListeners();
             }
         }
         NodeJS.WebSocket = WebSocket;
