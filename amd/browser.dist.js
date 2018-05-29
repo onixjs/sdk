@@ -87,7 +87,9 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          * current namespace.
          */
         remove(index) {
-            if (this.listeners[this.ns].collection[index]) {
+            if (this.listeners[this.ns] &&
+                this.listeners[this.ns].collection &&
+                this.listeners[this.ns].collection[index]) {
                 delete this.listeners[this.ns].collection[index];
             }
         }
@@ -98,7 +100,9 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          * depending on the current namespace and propagate the received data.
          */
         broadcast(data) {
-            Object.keys(this.listeners[this.ns].collection).forEach(index => this.listeners[this.ns].collection[index](data));
+            if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
+                Object.keys(this.listeners[this.ns].collection).forEach(index => this.listeners[this.ns].collection[index](data));
+            }
         }
         /**
          * @method forEach
@@ -107,8 +111,21 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          * depending on the current namespace and propagate the received data.
          */
         forEach(handler) {
-            if (this.listeners[this.ns].collection)
+            if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
                 Object.keys(this.listeners[this.ns].collection).forEach(index => handler(this.listeners[this.ns].collection[index]));
+            }
+        }
+        /**
+         * @method removeNameSpaceListeners
+         * @description This method will remove any listener from every
+         * collection from any namespace.
+         */
+        removeNameSpaceListeners(namespace) {
+            if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
+                Object.keys(this.listeners[namespace].collection).forEach(key => {
+                    this.namespace(namespace).remove(key);
+                });
+            }
         }
         /**
          * @method removeAllListeners
@@ -296,7 +313,9 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/unsu
                             },
                         },
                     };
-                    const listenerId = this.componentReference.moduleReference.appReference.config.listeners.add((response) => {
+                    const listenerId = this.componentReference.moduleReference.appReference.config.listeners
+                        .namespace('remote')
+                        .add((response) => {
                         if (response.uuid === operation.uuid &&
                             response.type ===
                                 14 /* ONIX_REMOTE_CALL_PROCEDURE_RESPONSE */) {
@@ -345,7 +364,9 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/unsu
                 // Register Stream
                 this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
                 // Chunks of information will be received in a future
-                const id = this.componentReference.moduleReference.appReference.config.listeners.add((response) => {
+                const id = this.componentReference.moduleReference.appReference.config.listeners
+                    .namespace('remote')
+                    .add((response) => {
                     if (response.uuid === operation.uuid &&
                         response.type === 12 /* ONIX_REMOTE_CALL_STREAM */) {
                         listener(response.message.request.payload);
@@ -492,7 +513,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                     this.config.intervals.timeout = 3000;
                 }
                 if (!this.config.intervals.reconnect) {
-                    this.config.intervals.timeout = 1000;
+                    this.config.intervals.timeout = 3000;
                 }
                 if (!this.config.tries) {
                     this.config.tries = {};
@@ -547,7 +568,9 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 // Connect WebSocket
                 this.ws.connect(url);
                 // Register Single WS Listener
-                this.ws.on('message', (data) => this.listeners.broadcast(utils_3.Utils.IsJsonString(data) ? JSON.parse(data) : data));
+                this.ws.on('message', (data) => this.listeners
+                    .namespace('remote')
+                    .broadcast(utils_3.Utils.IsJsonString(data) ? JSON.parse(data) : data));
                 // When connection is open then register and resolve
                 this.ws.open(() => 
                 // Wait until the connection is valid
@@ -600,7 +623,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 // the client implementing the SDK should
                 // Call the init method again
                 this.listeners.namespace('disconnect').broadcast(e);
-                this.listeners.removeAllListeners();
+                this.listeners.removeNameSpaceListeners('remote');
                 this.references = {};
             }, this.config.intervals.reconnect);
         }
@@ -642,7 +665,9 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 },
             };
             // Create listener
-            const index = this.listeners.add((data) => {
+            const index = this.listeners
+                .namespace('remote')
+                .add((data) => {
                 // Verify we actually get an object
                 const response = (typeof data ===
                     'string' && utils_3.Utils.IsJsonString(data)
@@ -691,7 +716,6 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                     clearInterval(interval);
                 }
             });
-            console.log('SENDING PING: ', ts);
             // Send timestamp
             this.ws.send(ts);
         }

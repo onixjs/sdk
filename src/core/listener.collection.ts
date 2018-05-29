@@ -73,7 +73,11 @@ export class ListenerCollection {
    * current namespace.
    */
   remove(index): void {
-    if (this.listeners[this.ns].collection[index]) {
+    if (
+      this.listeners[this.ns] &&
+      this.listeners[this.ns].collection &&
+      this.listeners[this.ns].collection[index]
+    ) {
       delete this.listeners[this.ns].collection[index];
     }
   }
@@ -84,9 +88,11 @@ export class ListenerCollection {
    * depending on the current namespace and propagate the received data.
    */
   broadcast(data): void {
-    Object.keys(this.listeners[this.ns].collection).forEach(index =>
-      this.listeners[this.ns].collection[index](data),
-    );
+    if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
+      Object.keys(this.listeners[this.ns].collection).forEach(index =>
+        this.listeners[this.ns].collection[index](data),
+      );
+    }
   }
   /**
    * @method forEach
@@ -95,10 +101,23 @@ export class ListenerCollection {
    * depending on the current namespace and propagate the received data.
    */
   forEach(handler): void {
-    if (this.listeners[this.ns].collection)
+    if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
       Object.keys(this.listeners[this.ns].collection).forEach(index =>
         handler(this.listeners[this.ns].collection[index]),
       );
+    }
+  }
+  /**
+   * @method removeNameSpaceListeners
+   * @description This method will remove any listener from every
+   * collection from any namespace.
+   */
+  removeNameSpaceListeners(namespace: string) {
+    if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
+      Object.keys(this.listeners[namespace].collection).forEach(key => {
+        this.namespace(namespace).remove(key);
+      });
+    }
   }
   /**
    * @method removeAllListeners

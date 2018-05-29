@@ -53,8 +53,9 @@ export class MethodReference {
             },
           },
         };
-        const listenerId: number = this.componentReference.moduleReference.appReference.config.listeners.add(
-          (response: IAppOperation) => {
+        const listenerId: number = this.componentReference.moduleReference.appReference.config.listeners
+          .namespace('remote')
+          .add((response: IAppOperation) => {
             if (
               response.uuid === operation.uuid &&
               response.type ===
@@ -66,8 +67,7 @@ export class MethodReference {
               resolve(response.message.request.payload);
             }
             // TODO ADD TIMEOUT RESPONSE HERE
-          },
-        );
+          });
         // Send Operation to Server
         this.componentReference.moduleReference.appReference.config.client.send(
           JSON.stringify(operation),
@@ -115,16 +115,16 @@ export class MethodReference {
         JSON.stringify(operation),
       );
       // Chunks of information will be received in a future
-      const id: number = this.componentReference.moduleReference.appReference.config.listeners.add(
-        (response: IAppOperation) => {
+      const id: number = this.componentReference.moduleReference.appReference.config.listeners
+        .namespace('remote')
+        .add((response: IAppOperation) => {
           if (
             response.uuid === operation.uuid &&
             response.type === OperationType.ONIX_REMOTE_CALL_STREAM
           ) {
             listener(response.message.request.payload);
           }
-        },
-      );
+        });
 
       return new Unsubscribe(
         id,

@@ -61,7 +61,7 @@ export class OnixClient {
         this.config.intervals.timeout = 3000;
       }
       if (!this.config.intervals.reconnect) {
-        this.config.intervals.timeout = 1000;
+        this.config.intervals.timeout = 3000;
       }
       if (!this.config.tries) {
         this.config.tries = {};
@@ -123,9 +123,9 @@ export class OnixClient {
       this.ws.connect(url);
       // Register Single WS Listener
       this.ws.on('message', (data: string) =>
-        this.listeners.broadcast(
-          Utils.IsJsonString(data) ? JSON.parse(data) : data,
-        ),
+        this.listeners
+          .namespace('remote')
+          .broadcast(Utils.IsJsonString(data) ? JSON.parse(data) : data),
       );
       // When connection is open then register and resolve
       this.ws.open(() =>
@@ -183,7 +183,7 @@ export class OnixClient {
       // the client implementing the SDK should
       // Call the init method again
       this.listeners.namespace('disconnect').broadcast(e);
-      this.listeners.removeAllListeners();
+      this.listeners.removeNameSpaceListeners('remote');
       this.references = {};
     }, this.config.intervals!.reconnect!);
   }
@@ -225,30 +225,32 @@ export class OnixClient {
       },
     };
     // Create listener
-    const index: number = this.listeners.add((data: IAppOperation | string) => {
-      // Verify we actually get an object
-      const response: IAppOperation = <IAppOperation>(typeof data ===
-        'string' && Utils.IsJsonString(data)
-        ? JSON.parse(data)
-        : data);
-      // Verify we got the result, which will provide the registration
-      // Later might be used on handled disconnections.
-      if (
-        response.uuid === operation.uuid &&
-        response.type === OperationType.ONIX_REMOTE_REGISTER_CLIENT_RESPONSE
-      ) {
+    const index: number = this.listeners
+      .namespace('remote')
+      .add((data: IAppOperation | string) => {
+        // Verify we actually get an object
+        const response: IAppOperation = <IAppOperation>(typeof data ===
+          'string' && Utils.IsJsonString(data)
+          ? JSON.parse(data)
+          : data);
+        // Verify we got the result, which will provide the registration
+        // Later might be used on handled disconnections.
         if (
-          response.message.request.payload.code &&
-          response.message.request.payload.message
+          response.uuid === operation.uuid &&
+          response.type === OperationType.ONIX_REMOTE_REGISTER_CLIENT_RESPONSE
         ) {
-          reject(response.message.request.payload);
-        } else {
-          this.registration = new ClientRegistration(uuid);
-          this.listeners.remove(index);
-          resolve();
+          if (
+            response.message.request.payload.code &&
+            response.message.request.payload.message
+          ) {
+            reject(response.message.request.payload);
+          } else {
+            this.registration = new ClientRegistration(uuid);
+            this.listeners.remove(index);
+            resolve();
+          }
         }
-      }
-    });
+      });
     // Send registration operation
     this.ws.send(JSON.stringify(operation));
   }
@@ -278,7 +280,6 @@ export class OnixClient {
           clearInterval(interval);
         }
       });
-    console.log('SENDING PING: ', ts);
     // Send timestamp
     this.ws.send(ts);
   }

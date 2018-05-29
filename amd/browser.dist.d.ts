@@ -73,6 +73,12 @@ declare module "core/listener.collection" {
          */
         forEach(handler: any): void;
         /**
+         * @method removeNameSpaceListeners
+         * @description This method will remove any listener from every
+         * collection from any namespace.
+         */
+        removeNameSpaceListeners(namespace: string): void;
+        /**
          * @method removeAllListeners
          * @description This method will remove any listener from every
          * collection from any namespace.
