@@ -113,7 +113,7 @@ export class ListenerCollection {
    * collection from any namespace.
    */
   removeNameSpaceListeners(namespace: string) {
-    if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
+    if (this.listeners[namespace] && this.listeners[namespace].collection) {
       Object.keys(this.listeners[namespace].collection).forEach(key => {
         this.namespace(namespace).remove(key);
       });

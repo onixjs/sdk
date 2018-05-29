@@ -121,7 +121,7 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          * collection from any namespace.
          */
         removeNameSpaceListeners(namespace) {
-            if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
+            if (this.listeners[namespace] && this.listeners[namespace].collection) {
                 Object.keys(this.listeners[namespace].collection).forEach(key => {
                     this.namespace(namespace).remove(key);
                 });
@@ -507,21 +507,19 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                     this.config.intervals = {};
                 }
                 if (!this.config.intervals.ping) {
-                    this.config.intervals.ping = 10000;
+                    this.config.intervals.ping = 5000;
                 }
                 if (!this.config.intervals.timeout) {
-                    this.config.intervals.timeout = 3000;
+                    this.config.intervals.timeout = 1000;
                 }
                 if (!this.config.intervals.reconnect) {
-                    this.config.intervals.timeout = 3000;
+                    this.config.intervals.reconnect = 5000;
                 }
-                if (!this.config.tries) {
-                    this.config.tries = {};
+                if (!this.config.attempts) {
+                    this.config.attempts = {};
                 }
-                if (!this.config.tries) {
-                    this.config.tries = {
-                        ping: 5,
-                    };
+                if (!this.config.attempts.ping) {
+                    this.config.attempts.ping = 3;
                 }
             }
             else {
@@ -541,7 +539,9 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 return this.connect();
             }
             catch (e) {
-                throw new Error(`${exports.namespace} Unable to get host schema, verify internet connection and/or sdk host:port configs.`);
+                const error = new Error(`${exports.namespace} Unable to get host schema, verify internet connection and/or sdk host:port configs.`);
+                this.disconnected(error);
+                throw error;
             }
         }
         /**
@@ -555,6 +555,16 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             this.listeners.namespace('disconnect').add(e => {
                 handler(4);
             });
+        }
+        /**
+         * @method reconnect
+         * @param handler
+         * @description This method must be used to handle re-connections.
+         * Any reference must be destroyed and re-created when the client
+         * is connected again.
+         */
+        reconnect(handler) {
+            this.listeners.namespace('reconnect').add(handler);
         }
         /**
          * @method connect
@@ -615,16 +625,21 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          */
         disconnected(e) {
             // Remove any websocket listener
-            this.ws.removeAllListeners();
+            if (this.ws && this.ws.client && this.ws.removeAllListeners)
+                this.ws.removeAllListeners();
             // Wait some time before notifying the
             // disconnection.
+            // Will notify the disconnect listeners
+            // the client implementing the SDK should
+            // notify users there is a disconnection
+            this.listeners.namespace('disconnect').broadcast(e);
+            this.listeners.removeNameSpaceListeners('remote');
+            this.references = {};
             setTimeout(() => {
-                // Will notify the disconnect listeners
+                // Will notify the reconnect listeners
                 // the client implementing the SDK should
                 // Call the init method again
-                this.listeners.namespace('disconnect').broadcast(e);
-                this.listeners.removeNameSpaceListeners('remote');
-                this.references = {};
+                this.listeners.namespace('reconnect').broadcast(e);
             }, this.config.intervals.reconnect);
         }
         /**
@@ -699,8 +714,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             let to = 0;
             // set timeout interval
             const interval = setInterval(() => {
-                if (to >= this.config.tries.ping) {
-                    console.log('disconnecting, no ping returned');
+                if (to >= this.config.attempts.ping) {
                     this.disconnect();
                     clearInterval(id);
                     clearInterval(interval);
@@ -708,11 +722,12 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 to += 1;
             }, this.config.intervals.timeout);
             const index = this.listeners
-                .namespace('ping')
+                .namespace('remote')
                 .add((data) => {
-                if (typeof data === 'string' && data.includes(ts)) {
+                if ((typeof data === 'number' && data.toString().includes(ts)) ||
+                    (typeof data === 'string' && data.includes(ts))) {
                     to = 0;
-                    this.listeners.namespace('ping').remove(index);
+                    this.listeners.namespace('remote').remove(index);
                     clearInterval(interval);
                 }
             });
@@ -724,6 +739,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
          * @description Disconnect from websocket server
          */
         disconnect() {
+            this.disconnected('CLOSED');
             this.ws.close();
         }
         /**
@@ -794,7 +810,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 return { sub: '$anonymous' };
             }
         }
-        waitForConnection(callback, interval = 1000) {
+        waitForConnection(callback, interval = 100) {
             if (this.ws.client.readyState === 1) {
                 callback();
             }

@@ -181,7 +181,7 @@ declare module "interfaces/index" {
             reconnect?: number;
             timeout?: number;
         };
-        tries?: {
+        attempts?: {
             ping?: number;
         };
     }
@@ -426,6 +426,14 @@ declare module "index" {
          * is connected again.
          */
         onDisconnect(handler: any): void;
+        /**
+         * @method reconnect
+         * @param handler
+         * @description This method must be used to handle re-connections.
+         * Any reference must be destroyed and re-created when the client
+         * is connected again.
+         */
+        reconnect(handler: any): void;
         /**
          * @method connect
          * @description This method will be internally used to handle ws connection

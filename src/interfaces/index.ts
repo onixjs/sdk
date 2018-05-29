@@ -52,7 +52,7 @@ export interface OnixClientConfig {
     reconnect?: number;
     timeout?: number;
   };
-  tries?: {
+  attempts?: {
     ping?: number;
   };
 }

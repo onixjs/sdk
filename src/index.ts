@@ -55,21 +55,19 @@ export class OnixClient {
         this.config.intervals = {};
       }
       if (!this.config.intervals.ping) {
-        this.config.intervals.ping = 10000;
+        this.config.intervals.ping = 5000;
       }
       if (!this.config.intervals.timeout) {
-        this.config.intervals.timeout = 3000;
+        this.config.intervals.timeout = 1000;
       }
       if (!this.config.intervals.reconnect) {
-        this.config.intervals.timeout = 3000;
+        this.config.intervals.reconnect = 5000;
       }
-      if (!this.config.tries) {
-        this.config.tries = {};
+      if (!this.config.attempts) {
+        this.config.attempts = {};
       }
-      if (!this.config.tries) {
-        this.config.tries = {
-          ping: 5,
-        };
+      if (!this.config.attempts!.ping) {
+        this.config.attempts!.ping = 3;
       }
     } else {
       console.log('ONIXJS SDK: Unable to find suitable adapters.');
@@ -80,7 +78,7 @@ export class OnixClient {
    * @description this method will get the onix infrastructure schema
    * in order to correctly configure each Application Reference.
    */
-  public async init(): Promise<boolean> {
+  public async init() {
     try {
       // Get OnixJS Schema
       this.schema = await this.http.get(
@@ -89,9 +87,11 @@ export class OnixClient {
       // Connect
       return this.connect();
     } catch (e) {
-      throw new Error(
+      const error = new Error(
         `${namespace} Unable to get host schema, verify internet connection and/or sdk host:port configs.`,
       );
+      this.disconnected(error);
+      throw error;
     }
   }
   /**
@@ -105,6 +105,16 @@ export class OnixClient {
     this.listeners.namespace('disconnect').add(e => {
       handler(4);
     });
+  }
+  /**
+   * @method reconnect
+   * @param handler
+   * @description This method must be used to handle re-connections.
+   * Any reference must be destroyed and re-created when the client
+   * is connected again.
+   */
+  public reconnect(handler) {
+    this.listeners.namespace('reconnect').add(handler);
   }
   /**
    * @method connect
@@ -175,16 +185,21 @@ export class OnixClient {
    */
   private disconnected(e) {
     // Remove any websocket listener
-    this.ws.removeAllListeners();
+    if (this.ws && this.ws.client && this.ws.removeAllListeners)
+      this.ws.removeAllListeners();
     // Wait some time before notifying the
     // disconnection.
+    // Will notify the disconnect listeners
+    // the client implementing the SDK should
+    // notify users there is a disconnection
+    this.listeners.namespace('disconnect').broadcast(e);
+    this.listeners.removeNameSpaceListeners('remote');
+    this.references = {};
     setTimeout(() => {
-      // Will notify the disconnect listeners
+      // Will notify the reconnect listeners
       // the client implementing the SDK should
       // Call the init method again
-      this.listeners.namespace('disconnect').broadcast(e);
-      this.listeners.removeNameSpaceListeners('remote');
-      this.references = {};
+      this.listeners.namespace('reconnect').broadcast(e);
     }, this.config.intervals!.reconnect!);
   }
   /**
@@ -262,8 +277,7 @@ export class OnixClient {
     let to: number = 0;
     // set timeout interval
     const interval = setInterval(() => {
-      if (to >= this.config.tries!.ping!) {
-        console.log('disconnecting, no ping returned');
+      if (to >= this.config.attempts!.ping!) {
         this.disconnect();
         clearInterval(id);
         clearInterval(interval);
@@ -272,11 +286,14 @@ export class OnixClient {
     }, this.config.intervals!.timeout);
 
     const index: number = this.listeners
-      .namespace('ping')
-      .add((data: IAppOperation | string) => {
-        if (typeof data === 'string' && data.includes(ts)) {
+      .namespace('remote')
+      .add((data: IAppOperation | number | string) => {
+        if (
+          (typeof data === 'number' && data.toString().includes(ts)) ||
+          (typeof data === 'string' && data.includes(ts))
+        ) {
           to = 0;
-          this.listeners.namespace('ping').remove(index);
+          this.listeners.namespace('remote').remove(index);
           clearInterval(interval);
         }
       });
@@ -288,6 +305,7 @@ export class OnixClient {
    * @description Disconnect from websocket server
    */
   public disconnect(): void {
+    this.disconnected('CLOSED');
     this.ws.close();
   }
   /**
@@ -372,7 +390,7 @@ export class OnixClient {
     }
   }
 
-  waitForConnection(callback, interval = 1000) {
+  waitForConnection(callback, interval = 100) {
     if (this.ws.client.readyState === 1) {
       callback();
     } else {
