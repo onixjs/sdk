@@ -109,7 +109,10 @@ define("core/listener.collection", ["require", "exports", "interfaces/index"], f
          */
         broadcast(data) {
             if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
-                Object.keys(this.listeners[this.ns].collection).forEach(index => this.listeners[this.ns].collection[index](data));
+                Object.keys(this.listeners[this.ns].collection).forEach(index => {
+                    if (typeof this.listeners[this.ns].collection[index] === 'function')
+                        this.listeners[this.ns].collection[index](data);
+                });
             }
         }
         /**
@@ -200,17 +203,17 @@ define("utils/index", ["require", "exports"], function (require, exports) {
         Utils.getRandomInt = getRandomInt;
     })(Utils = exports.Utils || (exports.Utils = {}));
 });
-define("core/unsubscribe", ["require", "exports", "utils/index"], function (require, exports, utils_1) {
+define("core/subscription", ["require", "exports", "utils/index"], function (require, exports, utils_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
-     * @class Unsubscribe
+     * @class Subscription
      * @author Jonathan Casarrubias
      * @license MIT
      * @description This class will provide a way
      * to unsubscribe a stream from the server.
      */
-    class Unsubscribe {
+    class Subscription {
         /**
          * @constructor
          * @param id
@@ -222,8 +225,10 @@ define("core/unsubscribe", ["require", "exports", "utils/index"], function (requ
          * and finally the app config so we can use the listeners database
          * and websocket client to finalize these listeners.
          */
-        constructor(id, operation, config) {
+        constructor(id, listener, endpoint, operation, config) {
             this.id = id;
+            this.listener = listener;
+            this.endpoint = endpoint;
             this.operation = operation;
             this.config = config;
         }
@@ -239,13 +244,15 @@ define("core/unsubscribe", ["require", "exports", "utils/index"], function (requ
                     // Create unsubscribe app operation
                     const operation = {
                         uuid: utils_1.Utils.uuid(),
-                        type: 15 /* ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE */,
+                        type: 16 /* ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE */,
                         message: {
-                            rpc: 'unsubscribe',
+                            rpc: `${this.endpoint}.unsubscribe`,
                             request: {
                                 metadata: {
                                     stream: false,
-                                    subscription: this.config.registration().uuid,
+                                    register: this.config.registration().uuid,
+                                    listener: this.listener,
+                                    subscription: this.operation.uuid,
                                 },
                                 payload: this.operation,
                             },
@@ -256,7 +263,7 @@ define("core/unsubscribe", ["require", "exports", "utils/index"], function (requ
                     const id = this.config.listeners.add((response) => {
                         if (response.uuid === operation.uuid &&
                             response.type ===
-                                16 /* ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE */) {
+                                17 /* ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE */) {
                             // Remove unsubscribe listener
                             this.config.listeners.remove(id);
                             // Remove original stream listener
@@ -271,9 +278,9 @@ define("core/unsubscribe", ["require", "exports", "utils/index"], function (requ
             });
         }
     }
-    exports.Unsubscribe = Unsubscribe;
+    exports.Subscription = Subscription;
 });
-define("core/method.reference", ["require", "exports", "utils/index", "core/unsubscribe"], function (require, exports, utils_2, unsubscribe_1) {
+define("core/method.reference", ["require", "exports", "utils/index", "core/subscription"], function (require, exports, utils_2, subscription_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -317,7 +324,7 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/unsu
                                             .config.claims.sub,
                                         token: this.componentReference.moduleReference.appReference
                                             .config.token,
-                                        subscription: this.componentReference.moduleReference.appReference.config.registration()
+                                        register: this.componentReference.moduleReference.appReference.config.registration()
                                             .uuid,
                                     },
                                     payload,
@@ -349,43 +356,51 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/unsu
          * sending chunks of information.
          */
         stream(listener, filter) {
-            if (this.invalid('stream')) {
-                listener(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
-            }
-            else {
-                const operation = {
-                    uuid: utils_2.Utils.uuid(),
-                    type: 13 /* ONIX_REMOTE_CALL_PROCEDURE */,
-                    message: {
-                        rpc: this.endpoint(),
-                        request: {
-                            metadata: {
-                                filter,
-                                stream: true,
-                                caller: this.componentReference.moduleReference.appReference
-                                    .config.claims.sub,
-                                token: this.componentReference.moduleReference.appReference.config
-                                    .token,
-                                subscription: this.componentReference.moduleReference.appReference.config.registration()
-                                    .uuid,
+            return __awaiter(this, void 0, void 0, function* () {
+                return new Promise(resolve => {
+                    if (this.invalid('stream')) {
+                        listener(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
+                    }
+                    else {
+                        const operation = {
+                            uuid: utils_2.Utils.uuid(),
+                            type: 13 /* ONIX_REMOTE_CALL_PROCEDURE */,
+                            message: {
+                                rpc: this.endpoint(),
+                                request: {
+                                    metadata: {
+                                        filter,
+                                        stream: true,
+                                        caller: this.componentReference.moduleReference.appReference
+                                            .config.claims.sub,
+                                        token: this.componentReference.moduleReference.appReference
+                                            .config.token,
+                                        register: this.componentReference.moduleReference.appReference.config.registration()
+                                            .uuid,
+                                    },
+                                    payload: undefined,
+                                },
                             },
-                            payload: undefined,
-                        },
-                    },
-                };
-                // Register Stream
-                this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
-                // Chunks of information will be received in a future
-                const id = this.componentReference.moduleReference.appReference.config.listeners
-                    .namespace('remote')
-                    .add((response) => {
-                    if (response.uuid === operation.uuid &&
-                        response.type === 12 /* ONIX_REMOTE_CALL_STREAM */) {
-                        listener(response.message.request.payload);
+                        };
+                        // Register Stream
+                        this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
+                        // Chunks of information will be received in a future
+                        const id = this.componentReference.moduleReference.appReference.config.listeners
+                            .namespace('remote')
+                            .add((response) => {
+                            if (response.uuid === operation.uuid) {
+                                if (response.type === 12 /* ONIX_REMOTE_CALL_STREAM */) {
+                                    listener(response.message.request.payload);
+                                }
+                                else if (response.type ===
+                                    15 /* ONIX_REMOTE_CALL_STREAM_SUBSCRIBED */) {
+                                    resolve(new subscription_1.Subscription(id, response.message.request.metadata.listener, this.endpoint(), operation, this.componentReference.moduleReference.appReference.config));
+                                }
+                            }
+                        });
                     }
                 });
-                return new unsubscribe_1.Unsubscribe(id, operation, this.componentReference.moduleReference.appReference.config);
-            }
+            });
         }
         invalid(type) {
             return (!this.componentReference.moduleReference.appReference.config.modules[this.componentReference.moduleReference.name] ||
@@ -463,7 +478,7 @@ define("core/app.reference", ["require", "exports", "core/module.reference"], fu
     }
     exports.AppReference = AppReference;
 });
-define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference", "core/listener.collection"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2, listener_collection_1) {
+define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference", "core/subscription", "core/listener.collection"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2, subscription_2, listener_collection_1) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -473,6 +488,7 @@ define("core/index", ["require", "exports", "core/app.reference", "core/module.r
     __export(module_reference_2);
     __export(component_reference_2);
     __export(method_reference_2);
+    __export(subscription_2);
     exports.ListenerCollection = listener_collection_1.ListenerCollection;
 });
 define("index", ["require", "exports", "core/app.reference", "utils/index", "core/listener.collection", "core/client.registration", "core/index", "enums/index", "interfaces/index"], function (require, exports, app_reference_2, utils_3, listener_collection_2, client_registration_1, core_1, enums_1, interfaces_2) {
@@ -683,13 +699,13 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
             // Register Client
             const operation = {
                 uuid,
-                type: 17 /* ONIX_REMOTE_REGISTER_CLIENT */,
+                type: 18 /* ONIX_REMOTE_REGISTER_CLIENT */,
                 message: {
                     rpc: 'register',
                     request: {
                         metadata: {
                             stream: false,
-                            subscription: uuid,
+                            register: uuid,
                         },
                         payload: {},
                     },
@@ -707,7 +723,7 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 // Verify we got the result, which will provide the registration
                 // Later might be used on handled disconnections.
                 if (response.uuid === operation.uuid &&
-                    response.type === 18 /* ONIX_REMOTE_REGISTER_CLIENT_RESPONSE */) {
+                    response.type === 19 /* ONIX_REMOTE_REGISTER_CLIENT_RESPONSE */) {
                     if (response.message.request.payload.code &&
                         response.message.request.payload.message) {
                         reject(response.message.request.payload);

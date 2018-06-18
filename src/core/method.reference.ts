@@ -2,7 +2,7 @@ import {ComponentReference} from './component.reference';
 import {OperationType} from '../enums';
 import {IAppOperation, IRequest} from '../interfaces';
 import {Utils} from '../utils';
-import {Unsubscribe} from './unsubscribe';
+import {Subscription} from './subscription';
 /**
  * @class ModuleReference
  * @author Jonathan Casarrubias
@@ -46,7 +46,7 @@ export class MethodReference {
                   .config.claims.sub,
                 token: this.componentReference.moduleReference.appReference
                   .config.token,
-                subscription: this.componentReference.moduleReference.appReference.config.registration()
+                register: this.componentReference.moduleReference.appReference.config.registration()
                   .uuid,
               },
               payload,
@@ -82,56 +82,67 @@ export class MethodReference {
    * @description This method will register a stream, which will be populated as the server keeps
    * sending chunks of information.
    */
-  stream(listener: (stream: any) => void, filter?) {
-    if (this.invalid('stream')) {
-      listener(
-        new Error(
-          `ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`,
-        ),
-      );
-    } else {
-      const operation: IAppOperation = {
-        uuid: Utils.uuid(),
-        type: OperationType.ONIX_REMOTE_CALL_PROCEDURE,
-        message: {
-          rpc: this.endpoint(),
-          request: {
-            metadata: {
-              filter,
-              stream: true,
-              caller: this.componentReference.moduleReference.appReference
-                .config.claims.sub,
-              token: this.componentReference.moduleReference.appReference.config
-                .token,
-              subscription: this.componentReference.moduleReference.appReference.config.registration()
-                .uuid,
+  async stream(
+    listener: (stream: any) => void,
+    filter?,
+  ): Promise<Subscription> {
+    return new Promise<Subscription>(resolve => {
+      if (this.invalid('stream')) {
+        listener(
+          new Error(
+            `ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`,
+          ),
+        );
+      } else {
+        const operation: IAppOperation = {
+          uuid: Utils.uuid(),
+          type: OperationType.ONIX_REMOTE_CALL_PROCEDURE,
+          message: {
+            rpc: this.endpoint(),
+            request: {
+              metadata: {
+                filter,
+                stream: true,
+                caller: this.componentReference.moduleReference.appReference
+                  .config.claims.sub,
+                token: this.componentReference.moduleReference.appReference
+                  .config.token,
+                register: this.componentReference.moduleReference.appReference.config.registration()
+                  .uuid,
+              },
+              payload: undefined,
             },
-            payload: undefined,
           },
-        },
-      };
-      // Register Stream
-      this.componentReference.moduleReference.appReference.config.client.send(
-        JSON.stringify(operation),
-      );
-      // Chunks of information will be received in a future
-      const id: number = this.componentReference.moduleReference.appReference.config.listeners
-        .namespace('remote')
-        .add((response: IAppOperation) => {
-          if (
-            response.uuid === operation.uuid &&
-            response.type === OperationType.ONIX_REMOTE_CALL_STREAM
-          ) {
-            listener(response.message.request.payload);
-          }
-        });
-
-      return new Unsubscribe(
-        id,
-        operation,
-        this.componentReference.moduleReference.appReference.config,
-      );
-    }
+        };
+        // Register Stream
+        this.componentReference.moduleReference.appReference.config.client.send(
+          JSON.stringify(operation),
+        );
+        // Chunks of information will be received in a future
+        const id: number = this.componentReference.moduleReference.appReference.config.listeners
+          .namespace('remote')
+          .add((response: IAppOperation) => {
+            if (response.uuid === operation.uuid) {
+              if (response.type === OperationType.ONIX_REMOTE_CALL_STREAM) {
+                listener(response.message.request.payload);
+              } else if (
+                response.type ===
+                OperationType.ONIX_REMOTE_CALL_STREAM_SUBSCRIBED
+              ) {
+                resolve(
+                  new Subscription(
+                    id,
+                    <number>response.message.request.metadata.listener,
+                    this.endpoint(),
+                    operation,
+                    this.componentReference.moduleReference.appReference.config,
+                  ),
+                );
+              }
+            }
+          });
+      }
+    });
   }
 
   private invalid(type: string): boolean {

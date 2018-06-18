@@ -40,7 +40,9 @@ export interface IMetaData {
   sub?: string;
   token?: string;
   stream: boolean;
-  subscription: string;
+  register: string;
+  subscription?: string;
+  listener?: number;
 }
 export interface OnixClientConfig {
   host: string;

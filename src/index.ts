@@ -233,7 +233,7 @@ export class OnixClient {
         request: {
           metadata: {
             stream: false,
-            subscription: uuid,
+            register: uuid,
           },
           payload: {},
         },

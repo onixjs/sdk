@@ -114,12 +114,13 @@ declare module "enums/index" {
         ONIX_REMOTE_CALL_STREAM = 12,
         ONIX_REMOTE_CALL_PROCEDURE = 13,
         ONIX_REMOTE_CALL_PROCEDURE_RESPONSE = 14,
-        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE = 15,
-        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE = 16,
-        ONIX_REMOTE_REGISTER_CLIENT = 17,
-        ONIX_REMOTE_REGISTER_CLIENT_RESPONSE = 18,
-        ONIX_REMOTE_UNREGISTER_CLIENT = 19,
-        ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE = 20,
+        ONIX_REMOTE_CALL_STREAM_SUBSCRIBED = 15,
+        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE = 16,
+        ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE_RESPONSE = 17,
+        ONIX_REMOTE_REGISTER_CLIENT = 18,
+        ONIX_REMOTE_REGISTER_CLIENT_RESPONSE = 19,
+        ONIX_REMOTE_UNREGISTER_CLIENT = 20,
+        ONIX_REMOTE_UNREGISTER_CLIENT_RESPONSE = 21,
     }
     export const enum RuntimeEnvironment {
         BROWSER = 0,
@@ -169,7 +170,9 @@ declare module "interfaces/index" {
         sub?: string;
         token?: string;
         stream: boolean;
-        subscription: string;
+        register: string;
+        subscription?: string;
+        listener?: number;
     }
     export interface OnixClientConfig {
         host: string;
@@ -259,17 +262,19 @@ declare module "utils/index" {
         function getRandomInt(max: any): number;
     }
 }
-declare module "core/unsubscribe" {
+declare module "core/subscription" {
     import { IAppOperation, IAppRefConfig } from "index";
     /**
-     * @class Unsubscribe
+     * @class Subscription
      * @author Jonathan Casarrubias
      * @license MIT
      * @description This class will provide a way
      * to unsubscribe a stream from the server.
      */
-    export class Unsubscribe {
+    export class Subscription {
         private id;
+        private listener;
+        private endpoint;
         private operation;
         private config;
         /**
@@ -283,7 +288,7 @@ declare module "core/unsubscribe" {
          * and finally the app config so we can use the listeners database
          * and websocket client to finalize these listeners.
          */
-        constructor(id: number, operation: IAppOperation, config: IAppRefConfig);
+        constructor(id: number, listener: number, endpoint: string, operation: IAppOperation, config: IAppRefConfig);
         /**
          * @method unsubscribe
          * @description This async method will resolve once the server
@@ -295,7 +300,7 @@ declare module "core/unsubscribe" {
 }
 declare module "core/method.reference" {
     import { ComponentReference } from "core/component.reference";
-    import { Unsubscribe } from "core/unsubscribe";
+    import { Subscription } from "core/subscription";
     /**
      * @class ModuleReference
      * @author Jonathan Casarrubias
@@ -324,7 +329,7 @@ declare module "core/method.reference" {
          * @description This method will register a stream, which will be populated as the server keeps
          * sending chunks of information.
          */
-        stream(listener: (stream: any) => void, filter?: any): Unsubscribe | undefined;
+        stream(listener: (stream: any) => void, filter?: any): Promise<Subscription>;
         private invalid(type);
         private endpoint();
     }
@@ -378,6 +383,7 @@ declare module "core/index" {
     export * from "core/module.reference";
     export * from "core/component.reference";
     export * from "core/method.reference";
+    export * from "core/subscription";
     export { ListenerCollection } from "core/listener.collection";
 }
 declare module "index" {

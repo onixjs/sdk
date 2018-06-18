@@ -89,9 +89,10 @@ export class ListenerCollection {
    */
   broadcast(data): void {
     if (this.listeners[this.ns] && this.listeners[this.ns].collection) {
-      Object.keys(this.listeners[this.ns].collection).forEach(index =>
-        this.listeners[this.ns].collection[index](data),
-      );
+      Object.keys(this.listeners[this.ns].collection).forEach(index => {
+        if (typeof this.listeners[this.ns].collection[index] === 'function')
+          this.listeners[this.ns].collection[index](data);
+      });
     }
   }
   /**

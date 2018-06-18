@@ -1,13 +1,13 @@
 import {IAppOperation, OperationType, IAppRefConfig} from '..';
 import {Utils} from '../utils';
 /**
- * @class Unsubscribe
+ * @class Subscription
  * @author Jonathan Casarrubias
  * @license MIT
  * @description This class will provide a way
  * to unsubscribe a stream from the server.
  */
-export class Unsubscribe {
+export class Subscription {
   /**
    * @constructor
    * @param id
@@ -21,6 +21,8 @@ export class Unsubscribe {
    */
   constructor(
     private id: number,
+    private listener: number,
+    private endpoint: string,
     private operation: IAppOperation,
     private config: IAppRefConfig,
   ) {}
@@ -37,11 +39,13 @@ export class Unsubscribe {
         uuid: Utils.uuid(),
         type: OperationType.ONIX_REMOTE_CALL_STREAM_UNSUBSCRIBE,
         message: {
-          rpc: 'unsubscribe',
+          rpc: `${this.endpoint}.unsubscribe`,
           request: {
             metadata: {
               stream: false,
-              subscription: this.config.registration().uuid,
+              register: this.config.registration().uuid,
+              listener: this.listener,
+              subscription: this.operation.uuid,
             },
             payload: this.operation,
           },
