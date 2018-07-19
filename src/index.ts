@@ -357,12 +357,16 @@ export class OnixClient {
   }
   /**
    * @method claims
+   * @param organization
    * @author Jonathan Casarrubias
    * @description This method will return an OIDC claims object.
    * Usually will provide the user information and any scope
    * defined within the OIDC Client.
+   *
+   * Organization param is optional and is created to allow devs
+   * to claim user organization groups -if scoped-
    */
-  async claims(): Promise<IClaims> {
+  async claims(organization?: string): Promise<IClaims> {
     // Load claims from local storage
     const persisted: string | null = this.storage.getItem(
       `${this.config.prefix}:claims`,
@@ -375,19 +379,33 @@ export class OnixClient {
     if (this.token.length > 0) {
       // Now call from the SSO the user claims
       const claims = <IClaims>await this.http.get(
-        `https://sso.onixjs.io/me?access_token=${this.token}`,
+        `https://sso.onixjs.io/me?access_token=${this.token}${
+          organization ? `&organization=${organization}` : ''
+        }`,
       );
       // Store now in localstorage
-      this.storage.setItem(
-        `${this.config.prefix}:claims`,
-        JSON.stringify(claims),
-      );
+      this.setClaims(claims);
       // Return the claims
       return claims;
     } else {
       // This guy is not even logged, return an anonymous claim
       return {sub: '$anonymous'};
     }
+  }
+  /**
+   * @method setClaims
+   * @description This method will directly set the claims from a user
+   * without calling the SSO.
+   *
+   * This is an advanced method and must be avoided in most of the cases,
+   * though it is public, should only be used in edge cases.
+   */
+  setClaims(claims) {
+    // Store now in localstorage
+    this.storage.setItem(
+      `${this.config.prefix}:claims`,
+      JSON.stringify(claims),
+    );
   }
 
   waitForConnection(callback, interval = 100) {

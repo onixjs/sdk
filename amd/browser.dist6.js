@@ -280,7 +280,49 @@ define("core/subscription", ["require", "exports", "utils/index"], function (req
     }
     exports.Subscription = Subscription;
 });
-define("core/method.reference", ["require", "exports", "utils/index", "core/subscription"], function (require, exports, utils_2, subscription_1) {
+define("core/interceptor", ["require", "exports"], function (require, exports) {
+    "use strict";
+    Object.defineProperty(exports, "__esModule", { value: true });
+    /**
+     * @class Interceptors
+     * @description This class will statically contain
+     * interceptors, it won't be exposed to final developers
+     * but it will be internally used.
+     */
+    class Interceptors {
+    }
+    exports.Interceptors = Interceptors;
+    /**
+     * @class Interceptor
+     * @author Jonathan Casarrubias
+     * @license MIT
+     * @description This class will register
+     * interception methods that will be executed before
+     * and after every RPC or STREAM call
+     */
+    class Interceptor {
+        /**
+         * @method before
+         * @param handler
+         * @description register a handler that will be executed
+         * before every RPC or STREAM Call.
+         */
+        static before(handler) {
+            Interceptors.before = handler;
+        }
+        /**
+         * @method after
+         * @param handler
+         * @description register a handler that will be executed
+         * after every RPC or STREAM Call.
+         */
+        static after(handler) {
+            Interceptors.after = handler;
+        }
+    }
+    exports.Interceptor = Interceptor;
+});
+define("core/method.reference", ["require", "exports", "utils/index", "core/subscription", "core/interceptor"], function (require, exports, utils_2, subscription_1, interceptor_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
     /**
@@ -306,12 +348,12 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/subs
          */
         call(payload, filter) {
             return __awaiter(this, void 0, void 0, function* () {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve, reject) => __awaiter(this, void 0, void 0, function* () {
                     if (this.invalid('rpc')) {
                         reject(new Error(`ONIXJS CLIENT: Unable to call ${this.endpoint()}, RPC doesn't exist on OnixJS Server`));
                     }
                     else {
-                        const operation = {
+                        let operation = {
                             uuid: utils_2.Utils.uuid(),
                             type: 13 /* ONIX_REMOTE_CALL_PROCEDURE */,
                             message: {
@@ -333,19 +375,26 @@ define("core/method.reference", ["require", "exports", "utils/index", "core/subs
                         };
                         const listenerId = this.componentReference.moduleReference.appReference.config.listeners
                             .namespace('remote')
-                            .add((response) => {
+                            .add((response) => __awaiter(this, void 0, void 0, function* () {
                             if (response.uuid === operation.uuid &&
                                 response.type ===
                                     14 /* ONIX_REMOTE_CALL_PROCEDURE_RESPONSE */) {
                                 this.componentReference.moduleReference.appReference.config.listeners.remove(listenerId);
+                                // Call for after interceptor
+                                if (interceptor_1.Interceptors.after) {
+                                    response = yield interceptor_1.Interceptors.after(response);
+                                }
                                 resolve(response.message.request.payload);
                             }
-                            // TODO ADD TIMEOUT RESPONSE HERE
-                        });
+                        }));
+                        // Call for before interceptor
+                        if (interceptor_1.Interceptors.before) {
+                            operation = yield interceptor_1.Interceptors.before(operation);
+                        }
                         // Send Operation to Server
                         this.componentReference.moduleReference.appReference.config.client.send(JSON.stringify(operation));
                     }
-                });
+                }));
             });
         }
         /**
@@ -478,7 +527,7 @@ define("core/app.reference", ["require", "exports", "core/module.reference"], fu
     }
     exports.AppReference = AppReference;
 });
-define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference", "core/subscription", "core/listener.collection"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2, subscription_2, listener_collection_1) {
+define("core/index", ["require", "exports", "core/app.reference", "core/module.reference", "core/component.reference", "core/method.reference", "core/subscription", "core/listener.collection", "core/interceptor"], function (require, exports, app_reference_1, module_reference_2, component_reference_2, method_reference_2, subscription_2, listener_collection_1, interceptor_2) {
     "use strict";
     function __export(m) {
         for (var p in m) if (!exports.hasOwnProperty(p)) exports[p] = m[p];
@@ -490,6 +539,7 @@ define("core/index", ["require", "exports", "core/app.reference", "core/module.r
     __export(method_reference_2);
     __export(subscription_2);
     exports.ListenerCollection = listener_collection_1.ListenerCollection;
+    exports.Interceptor = interceptor_2.Interceptor;
 });
 define("index", ["require", "exports", "core/app.reference", "utils/index", "core/listener.collection", "core/client.registration", "core/index", "enums/index", "interfaces/index"], function (require, exports, app_reference_2, utils_3, listener_collection_2, client_registration_1, core_1, enums_1, interfaces_2) {
     "use strict";
@@ -818,12 +868,16 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
         }
         /**
          * @method claims
+         * @param organization
          * @author Jonathan Casarrubias
          * @description This method will return an OIDC claims object.
          * Usually will provide the user information and any scope
          * defined within the OIDC Client.
+         *
+         * Organization param is optional and is created to allow devs
+         * to claim user organization groups -if scoped-
          */
-        claims() {
+        claims(organization) {
             return __awaiter(this, void 0, void 0, function* () {
                 // Load claims from local storage
                 const persisted = this.storage.getItem(`${this.config.prefix}:claims`);
@@ -834,9 +888,9 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                 // Otherwise verify we actually have an access_token
                 if (this.token.length > 0) {
                     // Now call from the SSO the user claims
-                    const claims = yield this.http.get(`https://sso.onixjs.io/me?access_token=${this.token}`);
+                    const claims = yield this.http.get(`https://sso.onixjs.io/me?access_token=${this.token}${organization ? `&organization=${organization}` : ''}`);
                     // Store now in localstorage
-                    this.storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
+                    this.setClaims(claims);
                     // Return the claims
                     return claims;
                 }
@@ -845,6 +899,18 @@ define("index", ["require", "exports", "core/app.reference", "utils/index", "cor
                     return { sub: '$anonymous' };
                 }
             });
+        }
+        /**
+         * @method setClaims
+         * @description This method will directly set the claims from a user
+         * without calling the SSO.
+         *
+         * This is an advanced method and must be avoided in most of the cases,
+         * though it is public, should only be used in edge cases.
+         */
+        setClaims(claims) {
+            // Store now in localstorage
+            this.storage.setItem(`${this.config.prefix}:claims`, JSON.stringify(claims));
         }
         waitForConnection(callback, interval = 100) {
             if (this.ws.client.readyState === 1) {

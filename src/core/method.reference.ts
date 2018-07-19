@@ -3,6 +3,7 @@ import {OperationType} from '../enums';
 import {IAppOperation, IRequest} from '../interfaces';
 import {Utils} from '../utils';
 import {Subscription} from './subscription';
+import {Interceptors} from './interceptor';
 /**
  * @class ModuleReference
  * @author Jonathan Casarrubias
@@ -25,7 +26,7 @@ export class MethodReference {
    * to the OnixJS Service HOST.
    */
   async call(payload: any, filter?): Promise<any> {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       if (this.invalid('rpc')) {
         reject(
           new Error(
@@ -33,7 +34,7 @@ export class MethodReference {
           ),
         );
       } else {
-        const operation: IAppOperation = {
+        let operation: IAppOperation = {
           uuid: Utils.uuid(),
           type: OperationType.ONIX_REMOTE_CALL_PROCEDURE,
           message: {
@@ -55,7 +56,7 @@ export class MethodReference {
         };
         const listenerId: number = this.componentReference.moduleReference.appReference.config.listeners
           .namespace('remote')
-          .add((response: IAppOperation) => {
+          .add(async (response: IAppOperation) => {
             if (
               response.uuid === operation.uuid &&
               response.type ===
@@ -64,10 +65,17 @@ export class MethodReference {
               this.componentReference.moduleReference.appReference.config.listeners.remove(
                 listenerId,
               );
+              // Call for after interceptor
+              if (Interceptors.after) {
+                response = await Interceptors.after(response);
+              }
               resolve(response.message.request.payload);
             }
-            // TODO ADD TIMEOUT RESPONSE HERE
           });
+        // Call for before interceptor
+        if (Interceptors.before) {
+          operation = await Interceptors.before(operation);
+        }
         // Send Operation to Server
         this.componentReference.moduleReference.appReference.config.client.send(
           JSON.stringify(operation),

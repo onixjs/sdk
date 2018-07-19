@@ -88,6 +88,9 @@ export interface IClaims {
   sub: string;
   [key: string]: any;
 }
+export interface InterceptFunction {
+  (operation: IAppOperation): Promise<IAppOperation>;
+}
 export interface IAppRefConfig {
   name: string;
   host: string;

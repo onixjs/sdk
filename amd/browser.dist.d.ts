@@ -218,6 +218,9 @@ declare module "interfaces/index" {
         sub: string;
         [key: string]: any;
     }
+    export interface InterceptFunction {
+        (operation: IAppOperation): Promise<IAppOperation>;
+    }
     export interface IAppRefConfig {
         name: string;
         host: string;
@@ -296,6 +299,43 @@ declare module "core/subscription" {
          * stream operation.
          */
         unsubscribe(): Promise<{}>;
+    }
+}
+declare module "core/interceptor" {
+    import { InterceptFunction } from "interfaces/index";
+    /**
+     * @class Interceptors
+     * @description This class will statically contain
+     * interceptors, it won't be exposed to final developers
+     * but it will be internally used.
+     */
+    export class Interceptors {
+        static before: InterceptFunction;
+        static after: InterceptFunction;
+    }
+    /**
+     * @class Interceptor
+     * @author Jonathan Casarrubias
+     * @license MIT
+     * @description This class will register
+     * interception methods that will be executed before
+     * and after every RPC or STREAM call
+     */
+    export class Interceptor {
+        /**
+         * @method before
+         * @param handler
+         * @description register a handler that will be executed
+         * before every RPC or STREAM Call.
+         */
+        static before(handler: InterceptFunction): void;
+        /**
+         * @method after
+         * @param handler
+         * @description register a handler that will be executed
+         * after every RPC or STREAM Call.
+         */
+        static after(handler: InterceptFunction): void;
     }
 }
 declare module "core/method.reference" {
@@ -385,6 +425,7 @@ declare module "core/index" {
     export * from "core/method.reference";
     export * from "core/subscription";
     export { ListenerCollection } from "core/listener.collection";
+    export { Interceptor } from "core/interceptor";
 }
 declare module "index" {
     import { OnixClientConfig, IClaims } from "interfaces/index";
@@ -498,12 +539,25 @@ declare module "index" {
         token: string;
         /**
          * @method claims
+         * @param organization
          * @author Jonathan Casarrubias
          * @description This method will return an OIDC claims object.
          * Usually will provide the user information and any scope
          * defined within the OIDC Client.
+         *
+         * Organization param is optional and is created to allow devs
+         * to claim user organization groups -if scoped-
          */
-        claims(): Promise<IClaims>;
+        claims(organization?: string): Promise<IClaims>;
+        /**
+         * @method setClaims
+         * @description This method will directly set the claims from a user
+         * without calling the SSO.
+         *
+         * This is an advanced method and must be avoided in most of the cases,
+         * though it is public, should only be used in edge cases.
+         */
+        setClaims(claims: any): void;
         waitForConnection(callback: any, interval?: number): void;
         /**
          * @method logout

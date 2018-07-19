@@ -4,3 +4,4 @@ export * from './component.reference';
 export * from './method.reference';
 export * from './subscription';
 export {ListenerCollection} from './listener.collection';
+export {Interceptor} from './interceptor';
